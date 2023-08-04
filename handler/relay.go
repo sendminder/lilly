@@ -38,8 +38,7 @@ func StartRelayServer(wg *sync.WaitGroup) {
 	}
 }
 
-func CreateRelayConnection(wg *sync.WaitGroup) {
-	defer wg.Done()
+func init() {
 	relayConn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)

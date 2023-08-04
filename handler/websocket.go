@@ -217,8 +217,7 @@ func StartWebSocketServer(wg *sync.WaitGroup) {
 	}
 }
 
-func CreateMessageConnection(wg *sync.WaitGroup) {
-	defer wg.Done()
+func init() {
 	messageConn, err := grpc.Dial("localhost:3100", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)

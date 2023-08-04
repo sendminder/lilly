@@ -7,12 +7,9 @@ import (
 
 func main() {
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 	go handler.StartRelayServer(&wg)
-	go handler.CreateRelayConnection(&wg)
-
 	go handler.StartWebSocketServer(&wg)
-	go handler.CreateMessageConnection(&wg)
 
 	wg.Wait()
 }
