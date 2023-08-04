@@ -13,6 +13,10 @@ type ReadMessage struct {
 	MessageId      int64 `json:"message_id"`
 }
 
+type DecryptConversation struct {
+	ConversationId int64 `json:"conv_id"`
+}
+
 type BroadcastEvent struct {
 	Event       string          `json:"event"`
 	Payload     json.RawMessage `json:"payload"`

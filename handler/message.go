@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	msg "lilly/proto/message"
 	relay "lilly/proto/relay"
 	"lilly/protocol"
@@ -19,7 +20,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 
 	// 받은 메시지를 출력합니다.
-	log.Printf("Received convId: %d, text: %s\n", reqCreateMsg.ConversationId, reqCreateMsg.Text)
+	log.Printf("[ReqCreateMessage] convId: %d, text: %s\n", reqCreateMsg.ConversationId, reqCreateMsg.Text)
 
 	// 메시지 생성 요청
 	resp, err := createMessage(reqCreateMsg)
@@ -37,21 +38,15 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 	log.Printf("Relayed Message: %v\n", resp2)
 
-	// Json 인코딩을 위한 맵 생성
-	payloadMap := map[string]json.RawMessage{
-		"message": createJsonMessage(resp.Message),
-	}
-
-	// Json 인코딩
-	payloadJson, err := json.Marshal(payloadMap)
+	jsonData, err := createJsonData("message", resp.Message)
 	if err != nil {
-		log.Printf("Failed to marshal payload: %v", err)
+		fmt.Println("Failed to marshal JSON:", err)
 		return
 	}
 
 	broadcastEvent := protocol.BroadcastEvent{
 		Event:       "message",
-		Payload:     payloadJson,
+		Payload:     jsonData,
 		JoinedUsers: resp.JoinedUsers,
 	}
 
@@ -67,13 +62,16 @@ func HandleReadMessage(payload json.RawMessage) {
 	}
 
 	// 받은 메시지를 출력합니다.
-	log.Printf("Received convId: %d, messageId: %d\n", reqReadMsg.ConversationId, reqReadMsg.MessageId)
+	log.Printf("[ReqReadMessage] convId: %d, messageId: %d\n", reqReadMsg.ConversationId, reqReadMsg.MessageId)
 	resp, err := readMessage(reqReadMsg)
 	if err != nil {
 		log.Printf("Failed to read message: %v", err)
 		return
 	}
 	log.Printf("Readed Message: %v\n", resp)
+
+	// TODO: read_message relay
+	// read_message 릴레이하면, 클라에서 안읽은 유저수 카운트 처리할수있나?
 }
 
 func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
@@ -135,4 +133,19 @@ func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, err
 		return nil, err
 	}
 	return resp, nil
+}
+
+// key, value로 마샬링
+func createJsonData(key string, value interface{}) ([]byte, error) {
+	data := map[string]interface{}{
+		key: value,
+	}
+
+	// JSON 마샬링
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonData, nil
 }

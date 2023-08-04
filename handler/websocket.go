@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"lilly/protocol"
 	"log"
 	"net/http"
@@ -98,6 +99,9 @@ func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
 	case "read_message":
 		HandleReadMessage(reqMessage.Payload)
 
+	case "decrypt_conversation":
+		HandleDecryptConversation(reqMessage.Payload)
+
 	default:
 		log.Println("Unknown event:", reqMessage.Event)
 	}
@@ -133,22 +137,20 @@ func handleMessages() {
 				if activeClients.contains(joinedUserId) {
 					client := activeClients[joinedUserId]
 
-					// BroadcastEvent의 event와 payload를 따로 분리하여 생성
-					eventPayload := map[string]json.RawMessage{
-						"event":   []byte(msg.Event),
+					data := map[string]interface{}{
+						"event":   msg.Event,
 						"payload": msg.Payload,
 					}
 
-					// eventPayload를 Json으로 인코딩
-					payloadJson, err := json.Marshal(eventPayload)
+					// JSON 마샬링
+					jsonData, err := json.Marshal(data)
 					if err != nil {
-						log.Printf("failed to marshal payload: %v", err)
-						clientLock[joinedUserId%10].Unlock()
-						continue
+						fmt.Println("Failed to marshal JSON:", err)
+						return
 					}
 
 					select {
-					case client.send <- []byte(payloadJson):
+					case client.send <- jsonData:
 					default:
 						// 보내기 실패한 경우 클라이언트를 제거합니다.
 						log.Println("broadcast Error acquired")
