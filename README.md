@@ -1,5 +1,5 @@
 # lilly
-meow-meow websocket server
+meow-meow WebSocket server
 
 ## export & proto build
 
