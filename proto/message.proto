@@ -6,12 +6,24 @@ option go_package = "./message";
 
 service MessageService {
   rpc CreateMessage (RequestCreateMessage) returns (ResponseCreateMessage);
+  rpc ReadMessage (RequestReadMessage) returns (ResponseReadMessage);
+  rpc DecryptConversation (RequestDecryptConversation) returns (ResponseDecryptConversation);
 }
 
 message RequestCreateMessage {
   int64 sender_id = 1;
   int64 conversation_id = 2;
   string text = 3;
+}
+
+message RequestReadMessage {
+  int64 user_id = 1;
+  int64 conversation_id = 2;
+  int64 message_id = 3;
+}
+
+message RequestDecryptConversation {
+  int64 conversation_id = 2;
 }
 
 message Message {
@@ -24,5 +36,15 @@ message Message {
 message ResponseCreateMessage {
   Message message = 1;
   repeated int64 joined_users = 2;
+}
+
+message ResponseReadMessage {
+  string status = 1;
+  string message = 2;
+}
+
+message ResponseDecryptConversation {
+  string status = 1;
+  string message = 2;
 }
 

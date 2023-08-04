@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MessageService_CreateMessage_FullMethodName = "/message.MessageService/CreateMessage"
+	MessageService_CreateMessage_FullMethodName       = "/message.MessageService/CreateMessage"
+	MessageService_ReadMessage_FullMethodName         = "/message.MessageService/ReadMessage"
+	MessageService_DecryptConversation_FullMethodName = "/message.MessageService/DecryptConversation"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessageServiceClient interface {
 	CreateMessage(ctx context.Context, in *RequestCreateMessage, opts ...grpc.CallOption) (*ResponseCreateMessage, error)
+	ReadMessage(ctx context.Context, in *RequestReadMessage, opts ...grpc.CallOption) (*ResponseReadMessage, error)
+	DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error)
 }
 
 type messageServiceClient struct {
@@ -46,11 +50,31 @@ func (c *messageServiceClient) CreateMessage(ctx context.Context, in *RequestCre
 	return out, nil
 }
 
+func (c *messageServiceClient) ReadMessage(ctx context.Context, in *RequestReadMessage, opts ...grpc.CallOption) (*ResponseReadMessage, error) {
+	out := new(ResponseReadMessage)
+	err := c.cc.Invoke(ctx, MessageService_ReadMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error) {
+	out := new(ResponseDecryptConversation)
+	err := c.cc.Invoke(ctx, MessageService_DecryptConversation_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
 type MessageServiceServer interface {
 	CreateMessage(context.Context, *RequestCreateMessage) (*ResponseCreateMessage, error)
+	ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error)
+	DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -60,6 +84,12 @@ type UnimplementedMessageServiceServer struct {
 
 func (UnimplementedMessageServiceServer) CreateMessage(context.Context, *RequestCreateMessage) (*ResponseCreateMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DecryptConversation not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -92,6 +122,42 @@ func _MessageService_CreateMessage_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_ReadMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestReadMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ReadMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ReadMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ReadMessage(ctx, req.(*RequestReadMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_DecryptConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestDecryptConversation)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DecryptConversation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DecryptConversation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DecryptConversation(ctx, req.(*RequestDecryptConversation))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +168,14 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateMessage",
 			Handler:    _MessageService_CreateMessage_Handler,
+		},
+		{
+			MethodName: "ReadMessage",
+			Handler:    _MessageService_ReadMessage_Handler,
+		},
+		{
+			MethodName: "DecryptConversation",
+			Handler:    _MessageService_DecryptConversation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
