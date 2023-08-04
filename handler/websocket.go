@@ -1,19 +1,14 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"lilly/protocol"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"sync"
 
 	"lilly/proto/message"
-	msg "lilly/proto/message"
-	relay "lilly/proto/relay"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
@@ -38,7 +33,7 @@ type clientMap map[int64]*client
 
 var (
 	activeClients = make(clientMap)
-	broadcast     = make(chan protocol.BroadcastMessage)
+	broadcast     = make(chan protocol.BroadcastEvent)
 	register      = make(chan *client)
 	unregister    = make(chan *client)
 	messageConn   *grpc.ClientConn
@@ -68,7 +63,7 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	fmt.Println("Client connected.", newClient.userId)
+	log.Println("Client connected.", newClient.userId)
 
 	go newClient.writePump()
 
@@ -80,72 +75,31 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		var broadcastMsg protocol.BroadcastMessage
-		var reqCreateMsg protocol.CreateMessage
-		jsonErr := json.Unmarshal([]byte(message), &reqCreateMsg)
-		if jsonErr != nil {
-			log.Println("JSON Error: ", jsonErr)
-			return
-		}
-		// 받은 메시지를 출력합니다.
-		fmt.Printf("Received convId: %d, text: %s\n", reqCreateMsg.ConversationId, reqCreateMsg.Text)
+		handleWebSocketMessage(conn, message)
+	}
+}
 
-		// -- message 생성
-		// 0. 모카에게 create message 요청을 한다.
-		// 1. msg의 conversation id를 가져온다.
-		// 2. conv_id 기준으로 Redis에 조회해서 user ids를 가져온다.
-		// 2-1. redis에 없다면 db에서 가져오는데 이거 가져오는건 gRPC로 모카에게 요청
-		// 3. 가져온 user_ids를 각각 Redis에 조회해서 어떤 서버에 붙었는지 ip를 가져온다.
-		// 4. 각 IP의 릴리 에게 gRPC로 메시지 릴레이 요청을 한다.
-		// 5. user_ids중 레디스에 없는 유저는 펀치에게 push 요청을 한다.
-		// 6. 메시지의 안읽음 카운트를 -1 한다.
+func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
+	var reqMessage struct {
+		Event   string          `json:"event"`
+		Payload json.RawMessage `json:"payload"`
+	}
 
-		createMsg := &msg.RequestCreateMessage{
-			SenderId:       newClient.userId,
-			ConversationId: reqCreateMsg.ConversationId,
-			Text:           reqCreateMsg.Text,
-		}
+	jsonErr := json.Unmarshal(message, &reqMessage)
+	if jsonErr != nil {
+		log.Println("Json Error: ", jsonErr)
+		return
+	}
 
-		randIdx := rand.Intn(10)
-		mutexes[randIdx].Lock()
-		resp, err := messageClient[randIdx].CreateMessage(context.Background(), createMsg)
-		mutexes[randIdx].Unlock()
-		if err != nil {
-			log.Fatalf("failed to relay message: %v", err)
-		}
-		fmt.Printf("Relayed Message : %v\n", resp)
+	switch reqMessage.Event {
+	case "create_message":
+		HandleCreateMessage(reqMessage.Payload)
 
-		// -- join 요청
-		// 1. 모카에게 join conversation 요청을 한다.
-		// 2. 모카는 메시지 읽음처리를 한다. 메시지의 안읽음 카운트를 -1 한다.
-		// 3. 메시지 읽음 이벤트를 보낸다.
+	case "read_message":
+		HandleReadMessage(reqMessage.Payload)
 
-		// -- read 요청
-		// 1. 모카에게 read message 요청을 한다.
-		// 2. 메시지의 안읽음 카운트를 -1 한다.
-		// 3. 메시지 읽음 이벤트를 보낸다.
-
-		relayMsg := &relay.RequestRelayMessage{
-			Id:             resp.Message.Id,
-			ConversationId: reqCreateMsg.ConversationId,
-			Text:           reqCreateMsg.Text,
-			JoinedUsers:    resp.JoinedUsers,
-		}
-
-		randIdx = rand.Intn(10)
-		mutexes[randIdx].Lock()
-		resp2, err2 := RelayClient[randIdx].RelayMessage(context.Background(), relayMsg)
-		mutexes[randIdx].Unlock()
-		if err2 != nil {
-			log.Fatalf("failed to relay message: %v", err2)
-		}
-		fmt.Printf("Relayed Message : %v\n", resp2)
-
-		broadcastMsg.ConversationId = reqCreateMsg.ConversationId
-		broadcastMsg.Text = reqCreateMsg.Text
-		broadcastMsg.JoinedUsers = relayMsg.JoinedUsers
-
-		broadcast <- broadcastMsg
+	default:
+		log.Println("Unknown event:", reqMessage.Event)
 	}
 }
 
@@ -178,8 +132,23 @@ func handleMessages() {
 				clientLock[joinedUserId%10].Lock()
 				if activeClients.contains(joinedUserId) {
 					client := activeClients[joinedUserId]
+
+					// BroadcastEvent의 event와 payload를 따로 분리하여 생성
+					eventPayload := map[string]json.RawMessage{
+						"event":   []byte(msg.Event),
+						"payload": msg.Payload,
+					}
+
+					// eventPayload를 Json으로 인코딩
+					payloadJson, err := json.Marshal(eventPayload)
+					if err != nil {
+						log.Printf("failed to marshal payload: %v", err)
+						clientLock[joinedUserId%10].Unlock()
+						continue
+					}
+
 					select {
-					case client.send <- []byte(msg.Text):
+					case client.send <- []byte(payloadJson):
 					default:
 						// 보내기 실패한 경우 클라이언트를 제거합니다.
 						log.Println("broadcast Error acquired")
@@ -236,7 +205,7 @@ func StartWebSocketServer(wg *sync.WaitGroup) {
 	http.HandleFunc("/", handleWebSocketConnection)
 
 	// 웹소켓 핸들러를 등록하고 서버를 8080 포트에서 실행합니다.
-	fmt.Println("WebSocket server listening on :8080")
+	log.Println("WebSocket server listening on :8080")
 
 	go handleMessages()
 

@@ -31,20 +31,22 @@ message Message {
   int64 conversation_id = 2;
   int64 sender_id = 3;
   string text = 4;
+  string animal = 5;
 }
 
 message ResponseCreateMessage {
-  Message message = 1;
-  repeated int64 joined_users = 2;
+  string status = 1;
+  string error_message = 2;
+  Message message = 3;
+  repeated int64 joined_users = 4;
 }
 
 message ResponseReadMessage {
   string status = 1;
-  string message = 2;
+  string error_message = 2;
 }
 
 message ResponseDecryptConversation {
   string status = 1;
-  string message = 2;
+  string error_message = 2;
 }
-

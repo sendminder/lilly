@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	relay "lilly/proto/relay"
 	"log"
 	"net"
@@ -16,7 +15,7 @@ type relayServer struct {
 }
 
 func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
-	fmt.Println("RelayMessage : text=", req.Text)
+	log.Println("RelayMessage : text=", req.Text)
 	return &relay.ResponseRelayMessage{}, nil
 }
 
@@ -33,7 +32,7 @@ func StartRelayServer(wg *sync.WaitGroup) {
 	}
 	srv := grpc.NewServer()
 	relay.RegisterRelayServiceServer(srv, &relayServer{})
-	fmt.Println("gRPC server is listening on port 50051...")
+	log.Println("gRPC server is listening on port 50051...")
 	if err := srv.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
