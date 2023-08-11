@@ -15,7 +15,7 @@ type relayServer struct {
 }
 
 func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
-	log.Println("RelayMessage : text=", req.Text)
+	log.Println("RelayMessage : text=", req.Message.Text)
 	return &relay.ResponseRelayMessage{}, nil
 }
 
