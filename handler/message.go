@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"lilly/info"
 	msg "lilly/proto/message"
 	relay "lilly/proto/relay"
 	"lilly/protocol"
@@ -30,13 +31,52 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 	log.Printf("Created Message: %v\n", resp)
 
-	// 메시지 릴레이
-	resp2, err2 := relayMessage(reqCreateMsg, resp)
-	if err2 != nil {
-		log.Printf("Failed to relay message: %v", err2)
-		return
+	/*
+		1. joined_users 중 현재 local에 있는 유저에게 릴레이
+		2. local 에 릴레이 실패 유저 + joined_users 를 보고 현재 local 에 없는 유저 리스트 가져오기
+		3. (2)의 결과 redis로 조회
+		4. redis 조회시 나오는 ip로 relay 요청
+		5. 그래도 보내지 못한 유저에게 push 요청
+	*/
+	userInfos, _ := info.GetLocationsWithPipeline(resp.JoinedUsers)
+	targetRelayMap := make(map[string][]int64)
+	notFoundUsers := make([]int64, 0)
+	for userId, location := range userInfos {
+		if location != "localhost" {
+			targetRelayMap[location] = append(targetRelayMap[location], userId)
+		}
+		if location == "" {
+			notFoundUsers = append(notFoundUsers, userId)
+		}
 	}
-	log.Printf("Relayed Message: %v\n", resp2)
+	for targetIP, users := range targetRelayMap {
+		// 메시지 릴레이
+		if len(users) == 0 {
+			continue
+		}
+		msg := &relay.Message{
+			Id:             resp.Message.Id,
+			ConversationId: reqCreateMsg.ConversationId,
+			Text:           reqCreateMsg.Text,
+			SenderId:       reqCreateMsg.SenderId,
+			Animal:         "cat",
+		}
+		relayMsg := &relay.RequestRelayMessage{
+			Message:     msg,
+			JoinedUsers: users,
+		}
+
+		resp2, err2 := relayMessage(relayMsg, targetIP)
+		if err2 != nil {
+			log.Printf("Failed to relay message: %v", err2)
+			return
+		}
+		log.Printf("Relayed Message: %v\n", resp2)
+	}
+
+	for userId := range notFoundUsers {
+		log.Printf("Not Found User: %d\n", userId)
+	}
 
 	jsonData, err := createJsonData("message", resp.Message)
 	if err != nil {
@@ -91,14 +131,7 @@ func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMess
 	return resp, nil
 }
 
-func relayMessage(reqCreateMsg protocol.CreateMessage, resp *msg.ResponseCreateMessage) (*relay.ResponseRelayMessage, error) {
-	relayMsg := &relay.RequestRelayMessage{
-		Id:             resp.Message.Id,
-		ConversationId: reqCreateMsg.ConversationId,
-		Text:           reqCreateMsg.Text,
-		JoinedUsers:    resp.JoinedUsers,
-	}
-
+func relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string) (*relay.ResponseRelayMessage, error) {
 	randIdx := rand.Intn(10)
 	mutexes[randIdx].Lock()
 	resp2, err := RelayClient[randIdx].RelayMessage(context.Background(), relayMsg)
@@ -107,15 +140,6 @@ func relayMessage(reqCreateMsg protocol.CreateMessage, resp *msg.ResponseCreateM
 		return nil, err
 	}
 	return resp2, nil
-}
-
-func createJsonMessage(message *msg.Message) json.RawMessage {
-	messageJson, err := json.Marshal(message)
-	if err != nil {
-		log.Printf("Failed to marshal message: %v", err)
-		return nil
-	}
-	return json.RawMessage(messageJson)
 }
 
 func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {

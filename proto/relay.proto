@@ -8,10 +8,16 @@ service RelayService {
   rpc RelayMessage (RequestRelayMessage) returns (ResponseRelayMessage);
 }
 
-message RequestRelayMessage {
+message Message {
   int64 id = 1;
   int64 conversation_id = 2;
-  string text = 3;
+  int64 sender_id = 3;
+  string text = 4;
+  string animal = 5;
+}
+
+message RequestRelayMessage {
+  Message message = 1;
   repeated int64 joined_users = 4;
 }
 

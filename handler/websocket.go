@@ -13,6 +13,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+
+	info "lilly/info"
 )
 
 var upgrader = websocket.Upgrader{
@@ -56,15 +58,15 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte),
 	}
 	newClient.userId = getClientUserId(r)
-
 	log.Println("connection:", newClient)
+
 	register <- newClient
 	defer func() {
 		unregister <- newClient
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	log.Println("Client connected.", newClient.userId)
+	log.Printf("Client connected. u=%d s=%s\n", newClient.userId, "localhost")
 
 	go newClient.writePump()
 
@@ -162,10 +164,13 @@ func handleMessages() {
 			}
 		case client := <-register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
+			// TODO : localhost 대신 현재 ip 넣기 (init에서 미리 구하면 될듯)
+			info.SetUserLocation(client.userId, "localhost")
 			log.Println("registered")
 			activeClients[client.userId] = client
 		case client := <-unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
+			info.DeleteUserLocation(client.userId)
 			log.Println("unregistered")
 			if _, ok := activeClients[client.userId]; ok {
 				close(client.send)
