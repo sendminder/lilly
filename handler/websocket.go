@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"lilly/config"
 	"lilly/protocol"
 	"log"
 	"net/http"
@@ -66,7 +67,7 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	log.Printf("Client connected. u=%d s=%s\n", newClient.userId, "localhost")
+	log.Printf("Client connected. u=%d s=%s\n", newClient.userId, config.LocalIP)
 
 	go newClient.writePump()
 
@@ -164,9 +165,12 @@ func handleMessages() {
 			}
 		case client := <-register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
-			// TODO : localhost 대신 현재 ip 넣기 (init에서 미리 구하면 될듯)
-			info.SetUserLocation(client.userId, "localhost")
-			log.Println("registered")
+			err := info.SetUserLocation(client.userId, config.LocalIP)
+			if err != nil {
+				log.Println("register error", err)
+			} else {
+				log.Println("registered")
+			}
 			activeClients[client.userId] = client
 		case client := <-unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
@@ -223,12 +227,15 @@ func StartWebSocketServer(wg *sync.WaitGroup) {
 }
 
 func init() {
-	messageConn, err := grpc.Dial("localhost:3100", grpc.WithInsecure())
+	mochaIP := config.GetString("mocha.ip")
+	mochaPort := config.GetString("mocha.port")
+
+	messageConn, err := grpc.Dial(mochaIP+":"+mochaPort, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
 	for i := 0; i < 10; i++ {
 		messageClient[i] = message.NewMessageServiceClient(messageConn)
-		log.Println("rest client connection", i)
+		log.Printf("mocha (%s:%s) client connection %d\n", mochaIP, mochaPort, i)
 	}
 }

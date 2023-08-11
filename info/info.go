@@ -56,30 +56,12 @@ func GetUserLocation(userID int64) (string, error) {
 	return location, nil
 }
 
-func GetLocationsWithPipeline(userIDs []int64) (map[int64]string, error) {
-	pipe := RedisClient.Pipeline()
-
-	// 각 user_id에 대한 키 생성
-	keys := make([]string, len(userIDs))
-	for _, userID := range userIDs {
-		keys = append(keys, fmt.Sprintf("user:%d:location", userID))
-	}
-
-	getCmds := make([]*redis.StringCmd, len(keys))
-	for i, key := range keys {
-		getCmds[i] = pipe.Get(context.Background(), key)
-	}
-
-	// Pipeline 실행
-	_, err := pipe.Exec(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
+func GetUserLocations(userIDs []int64) (map[int64]string, error) {
+	// TODO: use pipeline
 	// 결과를 map으로 변환
 	locations := make(map[int64]string)
-	for i, cmd := range getCmds {
-		location, err := cmd.Result()
+	for i, userId := range userIDs {
+		location, err := GetUserLocation(userId)
 		if err != nil {
 			if err != redis.Nil {
 				return nil, err
@@ -92,32 +74,3 @@ func GetLocationsWithPipeline(userIDs []int64) (map[int64]string, error) {
 
 	return locations, nil
 }
-
-// func main() {
-// 	// 여러 사용자의 위치 가져오기 (Pipeline 사용)
-// 	userIDs := []int64{12345, 67890}
-// 	locationMap, err := GetLocationsWithPipeline(userIDs)
-// 	if err != nil {
-// 		log.Fatal("Failed to get locations from Redis:", err)
-// 	}
-
-// 	for userID, location := range locationMap {
-// 		fmt.Printf("User %d's location: %s\n", userID, location)
-// 	}
-
-// 	// 단일 사용자의 위치 설정 및 가져오기
-// 	singleUserID := int64(54321)
-// 	singleUserLocation := "Los Angeles"
-
-// 	err = SetLocation(singleUserID, singleUserLocation)
-// 	if err != nil {
-// 		log.Fatal("Failed to set location in Redis:", err)
-// 	}
-// 	fmt.Printf("Location set for user %d\n", singleUserID)
-
-// 	retrievedLocation, err := GetLocation(singleUserID)
-// 	if err != nil {
-// 		log.Fatal("Failed to get location from Redis:", err)
-// 	}
-// 	fmt.Printf("Retrieved location for user %d: %s\n", singleUserID, retrievedLocation)
-// }

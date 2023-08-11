@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"lilly/config"
 	"lilly/info"
 	msg "lilly/proto/message"
 	relay "lilly/proto/relay"
@@ -38,11 +39,14 @@ func HandleCreateMessage(payload json.RawMessage) {
 		4. redis 조회시 나오는 ip로 relay 요청
 		5. 그래도 보내지 못한 유저에게 push 요청
 	*/
-	userInfos, _ := info.GetLocationsWithPipeline(resp.JoinedUsers)
+	userInfos, err := info.GetUserLocations(resp.JoinedUsers)
+	if err != nil {
+		log.Println("GetUserInfo err", err)
+	}
 	targetRelayMap := make(map[string][]int64)
 	notFoundUsers := make([]int64, 0)
 	for userId, location := range userInfos {
-		if location != "localhost" {
+		if location != config.LocalIP {
 			targetRelayMap[location] = append(targetRelayMap[location], userId)
 		}
 		if location == "" {
@@ -132,14 +136,12 @@ func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMess
 }
 
 func relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string) (*relay.ResponseRelayMessage, error) {
-	randIdx := rand.Intn(10)
-	mutexes[randIdx].Lock()
-	resp2, err := RelayClient[randIdx].RelayMessage(context.Background(), relayMsg)
-	mutexes[randIdx].Unlock()
+	client := GetRelayClient(targetIP)
+	resp, err := client.RelayMessage(context.Background(), relayMsg)
 	if err != nil {
 		return nil, err
 	}
-	return resp2, nil
+	return resp, nil
 }
 
 func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
