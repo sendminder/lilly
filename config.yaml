@@ -1,5 +1,0 @@
-relay:
-  port: "50051"
-mocha:
-  ip: "localhost"
-  port: "3100"

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"lilly/cache"
 	"lilly/config"
 	"lilly/protocol"
 	"log"
@@ -14,8 +15,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
-
-	info "lilly/info"
 )
 
 var upgrader = websocket.Upgrader{
@@ -165,7 +164,7 @@ func handleMessages() {
 			}
 		case client := <-register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
-			err := info.SetUserLocation(client.userId, config.LocalIP)
+			err := cache.SetUserLocation(client.userId, config.LocalIP)
 			if err != nil {
 				log.Println("register error", err)
 			} else {
@@ -174,7 +173,7 @@ func handleMessages() {
 			activeClients[client.userId] = client
 		case client := <-unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
-			info.DeleteUserLocation(client.userId)
+			cache.DeleteUserLocation(client.userId)
 			log.Println("unregistered")
 			if _, ok := activeClients[client.userId]; ok {
 				close(client.send)
@@ -213,6 +212,8 @@ func getClientUserId(r *http.Request) int64 {
 
 func StartWebSocketServer(wg *sync.WaitGroup) {
 	defer wg.Done()
+	createMessageConnection()
+
 	http.HandleFunc("/", handleWebSocketConnection)
 
 	// 웹소켓 핸들러를 등록하고 서버를 8080 포트에서 실행합니다.
@@ -226,7 +227,7 @@ func StartWebSocketServer(wg *sync.WaitGroup) {
 	}
 }
 
-func init() {
+func createMessageConnection() {
 	mochaIP := config.GetString("mocha.ip")
 	mochaPort := config.GetString("mocha.port")
 

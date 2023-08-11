@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"lilly/cache"
 	"lilly/config"
-	"lilly/info"
 	msg "lilly/proto/message"
 	relay "lilly/proto/relay"
 	"lilly/protocol"
@@ -39,7 +39,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 		4. redis 조회시 나오는 ip로 relay 요청
 		5. 그래도 보내지 못한 유저에게 push 요청
 	*/
-	userInfos, err := info.GetUserLocations(resp.JoinedUsers)
+	userInfos, err := cache.GetUserLocations(resp.JoinedUsers)
 	if err != nil {
 		log.Println("GetUserInfo err", err)
 	}

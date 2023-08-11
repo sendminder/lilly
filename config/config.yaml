@@ -1,0 +1,10 @@
+relay:
+  port: "50051"
+mocha:
+  ip: "localhost"
+  port: "3100"
+redis:
+  ip: "localhost"
+  port: "26379"
+  password: ""
+ 

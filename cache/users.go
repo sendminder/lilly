@@ -1,8 +1,9 @@
-package info
+package cache
 
 import (
 	"context"
 	"fmt"
+	"lilly/config"
 	"log"
 
 	"github.com/go-redis/redis/v8"
@@ -10,12 +11,15 @@ import (
 
 var RedisClient *redis.Client
 
-func init() {
+func CreateRedisConnection() {
+	redisIP := config.GetString("redis.ip")
+	redisPort := config.GetString("redis.port")
+	redisPassword := config.GetString("redis.password")
 	// Redis 클라이언트 초기화
 	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     "localhost:26379", // Redis 서버 주소
-		Password: "",                // 비밀번호 (없는 경우 빈 문자열)
-		DB:       0,                 // 데이터베이스 번호
+		Addr:     redisIP + ":" + redisPort, // Redis 서버 주소
+		Password: redisPassword,             // 비밀번호 (없는 경우 빈 문자열)
+		DB:       0,                         // 데이터베이스 번호
 	})
 
 	// 연결 확인

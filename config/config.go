@@ -20,7 +20,7 @@ func init() {
 
 func loadConfig() {
 	log.Println("Config Loaded")
-	viper.SetConfigFile("config.yaml")
+	viper.SetConfigFile("./config/config.yaml")
 	if err := viper.ReadInConfig(); err != nil {
 		log.Println("Failed to read config file:", err)
 		return

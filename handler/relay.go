@@ -30,6 +30,7 @@ var (
 
 func StartRelayServer(wg *sync.WaitGroup) {
 	defer wg.Done()
+	relayPort = config.GetString("relay.port")
 	listener, err := net.Listen("tcp", ":"+relayPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -40,10 +41,6 @@ func StartRelayServer(wg *sync.WaitGroup) {
 	if err := srv.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
-}
-
-func init() {
-	relayPort = config.GetString("relay.port")
 }
 
 func GetRelayClient(target string) relay.RelayServiceClient {
