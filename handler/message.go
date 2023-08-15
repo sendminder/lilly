@@ -53,23 +53,24 @@ func HandleCreateMessage(payload json.RawMessage) {
 			notFoundUsers = append(notFoundUsers, userId)
 		}
 	}
+
+	msg := &relay.Message{
+		Id:             resp.Message.Id,
+		ConversationId: reqCreateMsg.ConversationId,
+		Text:           reqCreateMsg.Text,
+		SenderId:       reqCreateMsg.SenderId,
+		Animal:         "cat",
+	}
+
 	for targetIP, users := range targetRelayMap {
 		// 메시지 릴레이
 		if len(users) == 0 {
 			continue
 		}
-		msg := &relay.Message{
-			Id:             resp.Message.Id,
-			ConversationId: reqCreateMsg.ConversationId,
-			Text:           reqCreateMsg.Text,
-			SenderId:       reqCreateMsg.SenderId,
-			Animal:         "cat",
-		}
 		relayMsg := &relay.RequestRelayMessage{
 			Message:     msg,
 			JoinedUsers: users,
 		}
-
 		resp2, err2 := relayMessage(relayMsg, targetIP)
 		if err2 != nil {
 			log.Printf("Failed to relay message: %v", err2)
@@ -78,8 +79,9 @@ func HandleCreateMessage(payload json.RawMessage) {
 		log.Printf("Relayed Message: %v\n", resp2)
 	}
 
-	for userId := range notFoundUsers {
-		log.Printf("Not Found User: %d\n", userId)
+	if len(notFoundUsers) > 0 {
+		log.Printf("PushMessage to Not Found Users: %v\n", notFoundUsers)
+		pushMessage(resp.Message, notFoundUsers)
 	}
 
 	jsonData, err := createJsonData("message", resp.Message)
@@ -174,4 +176,21 @@ func createJsonData(key string, value interface{}) ([]byte, error) {
 	}
 
 	return jsonData, nil
+}
+
+func pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage, error) {
+	pushMsg := &msg.RequestPushMessage{
+		SenderId:        req.SenderId,
+		Message:         req,
+		ReceiverUserIds: receivers,
+	}
+
+	randIdx := rand.Intn(10)
+	mutexes[randIdx].Lock()
+	resp, err := messageClient[randIdx].PushMessage(context.Background(), pushMsg)
+	mutexes[randIdx].Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

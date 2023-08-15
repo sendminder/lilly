@@ -4,6 +4,7 @@ import (
 	"context"
 	"lilly/config"
 	relay "lilly/proto/relay"
+	"lilly/protocol"
 	"log"
 	"math/rand"
 	"net"
@@ -18,6 +19,21 @@ type relayServer struct {
 
 func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
 	log.Println("RelayMessage : text=", req.Message.Text)
+
+	jsonData, err := createJsonData("message", req.Message)
+	if err != nil {
+		log.Println("Failed to marshal JSON:", err)
+		return nil, err
+	}
+
+	broadcastEvent := protocol.BroadcastEvent{
+		Event:       "message",
+		Payload:     jsonData,
+		JoinedUsers: req.JoinedUsers,
+	}
+
+	broadcast <- broadcastEvent
+
 	return &relay.ResponseRelayMessage{}, nil
 }
 

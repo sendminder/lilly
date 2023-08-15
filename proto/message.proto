@@ -8,6 +8,7 @@ service MessageService {
   rpc CreateMessage (RequestCreateMessage) returns (ResponseCreateMessage);
   rpc ReadMessage (RequestReadMessage) returns (ResponseReadMessage);
   rpc DecryptConversation (RequestDecryptConversation) returns (ResponseDecryptConversation);
+  rpc PushMessage (RequestPushMessage) returns (ResponsePushMessage);
 }
 
 message RequestCreateMessage {
@@ -24,6 +25,12 @@ message RequestReadMessage {
 
 message RequestDecryptConversation {
   int64 conversation_id = 2;
+}
+
+message RequestPushMessage {
+  int64 sender_id = 1;
+  Message message = 2;
+  repeated int64 receiver_user_ids = 3;
 }
 
 message Message {
@@ -47,6 +54,11 @@ message ResponseReadMessage {
 }
 
 message ResponseDecryptConversation {
+  string status = 1;
+  string error_message = 2;
+}
+
+message ResponsePushMessage {
   string status = 1;
   string error_message = 2;
 }

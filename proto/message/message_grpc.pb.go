@@ -22,6 +22,7 @@ const (
 	MessageService_CreateMessage_FullMethodName       = "/message.MessageService/CreateMessage"
 	MessageService_ReadMessage_FullMethodName         = "/message.MessageService/ReadMessage"
 	MessageService_DecryptConversation_FullMethodName = "/message.MessageService/DecryptConversation"
+	MessageService_PushMessage_FullMethodName         = "/message.MessageService/PushMessage"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -31,6 +32,7 @@ type MessageServiceClient interface {
 	CreateMessage(ctx context.Context, in *RequestCreateMessage, opts ...grpc.CallOption) (*ResponseCreateMessage, error)
 	ReadMessage(ctx context.Context, in *RequestReadMessage, opts ...grpc.CallOption) (*ResponseReadMessage, error)
 	DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error)
+	PushMessage(ctx context.Context, in *RequestPushMessage, opts ...grpc.CallOption) (*ResponsePushMessage, error)
 }
 
 type messageServiceClient struct {
@@ -68,6 +70,15 @@ func (c *messageServiceClient) DecryptConversation(ctx context.Context, in *Requ
 	return out, nil
 }
 
+func (c *messageServiceClient) PushMessage(ctx context.Context, in *RequestPushMessage, opts ...grpc.CallOption) (*ResponsePushMessage, error) {
+	out := new(ResponsePushMessage)
+	err := c.cc.Invoke(ctx, MessageService_PushMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
@@ -75,6 +86,7 @@ type MessageServiceServer interface {
 	CreateMessage(context.Context, *RequestCreateMessage) (*ResponseCreateMessage, error)
 	ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error)
 	DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error)
+	PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -90,6 +102,9 @@ func (UnimplementedMessageServiceServer) ReadMessage(context.Context, *RequestRe
 }
 func (UnimplementedMessageServiceServer) DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DecryptConversation not implemented")
+}
+func (UnimplementedMessageServiceServer) PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PushMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -158,6 +173,24 @@ func _MessageService_DecryptConversation_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_PushMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestPushMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).PushMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_PushMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).PushMessage(ctx, req.(*RequestPushMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -176,6 +209,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DecryptConversation",
 			Handler:    _MessageService_DecryptConversation_Handler,
+		},
+		{
+			MethodName: "PushMessage",
+			Handler:    _MessageService_PushMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
