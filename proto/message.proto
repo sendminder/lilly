@@ -39,6 +39,8 @@ message Message {
   int64 sender_id = 3;
   string text = 4;
   string animal = 5;
+  string created_time = 6;
+  string updated_time = 7;
 }
 
 message ResponseCreateMessage {
