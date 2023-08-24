@@ -50,11 +50,12 @@ func HandleCreateMessage(payload json.RawMessage) {
 	targetRelayMap := make(map[string][]int64)
 	notFoundUsers := make([]int64, 0)
 	for userId, location := range userInfos {
-		if location != config.LocalIP {
-			targetRelayMap[location] = append(targetRelayMap[location], userId)
-		}
 		if location == "" {
 			notFoundUsers = append(notFoundUsers, userId)
+			continue
+		}
+		if location != config.LocalIP {
+			targetRelayMap[location] = append(targetRelayMap[location], userId)
 		}
 	}
 
@@ -101,6 +102,14 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 
 	broadcast <- broadcastEvent
+
+	if reqCreateMsg.ConversationType == "bot" {
+		/*
+			1. bot user를 가져와서 meow 인 경우
+			2. chat gpt api mocha에 요청
+		*/
+		log.Println("bot message created")
+	}
 }
 
 func HandleReadMessage(payload json.RawMessage) {

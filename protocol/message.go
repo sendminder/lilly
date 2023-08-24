@@ -3,9 +3,10 @@ package protocol
 import "encoding/json"
 
 type CreateMessage struct {
-	SenderId       int64  `json:"sender_id"`
-	ConversationId int64  `json:"conv_id"`
-	Text           string `json:"text"`
+	SenderId         int64  `json:"sender_id"`
+	ConversationId   int64  `json:"conv_id"`
+	ConversationType string `json:"conv_type"`
+	Text             string `json:"text"`
 }
 type ReadMessage struct {
 	UserId         int64 `json:"user_id"`
