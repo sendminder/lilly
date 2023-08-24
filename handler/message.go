@@ -21,6 +21,10 @@ func HandleCreateMessage(payload json.RawMessage) {
 		return
 	}
 
+	if reqCreateMsg.Text == "" {
+		log.Println("HandleCreateMessage Error: Text is empty")
+		return
+	}
 	// 받은 메시지를 출력합니다.
 	log.Printf("[ReqCreateMessage] convId: %d, text: %s\n", reqCreateMsg.ConversationId, reqCreateMsg.Text)
 
