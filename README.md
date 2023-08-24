@@ -1,5 +1,7 @@
 # lilly
-meow-meow WebSocket server
+
+![lilly](lilly.png)
+#### meow-meow WebSocket server
 
 ## export & proto build
 
