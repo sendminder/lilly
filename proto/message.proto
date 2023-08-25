@@ -9,12 +9,14 @@ service MessageService {
   rpc ReadMessage (RequestReadMessage) returns (ResponseReadMessage);
   rpc DecryptConversation (RequestDecryptConversation) returns (ResponseDecryptConversation);
   rpc PushMessage (RequestPushMessage) returns (ResponsePushMessage);
+  rpc CreateBotMessage (RequestBotMessage) returns (ResponseBotMessage);
 }
 
 message RequestCreateMessage {
   int64 sender_id = 1;
   int64 conversation_id = 2;
-  string text = 3;
+  string conversation_type = 3;
+  string text = 4;
 }
 
 message RequestReadMessage {
@@ -31,6 +33,13 @@ message RequestPushMessage {
   int64 sender_id = 1;
   Message message = 2;
   repeated int64 receiver_user_ids = 3;
+}
+
+message RequestBotMessage {
+  int64 sender_id = 1;
+  int64 conversation_id = 2;
+  string conversation_type = 3;
+  string text = 4;
 }
 
 message Message {
@@ -61,6 +70,11 @@ message ResponseDecryptConversation {
 }
 
 message ResponsePushMessage {
+  string status = 1;
+  string error_message = 2;
+}
+
+message ResponseBotMessage {
   string status = 1;
   string error_message = 2;
 }

@@ -8,6 +8,7 @@ type CreateMessage struct {
 	ConversationType string `json:"conv_type"`
 	Text             string `json:"text"`
 }
+
 type ReadMessage struct {
 	UserId         int64 `json:"user_id"`
 	ConversationId int64 `json:"conv_id"`

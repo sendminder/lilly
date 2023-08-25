@@ -23,6 +23,7 @@ const (
 	MessageService_ReadMessage_FullMethodName         = "/message.MessageService/ReadMessage"
 	MessageService_DecryptConversation_FullMethodName = "/message.MessageService/DecryptConversation"
 	MessageService_PushMessage_FullMethodName         = "/message.MessageService/PushMessage"
+	MessageService_CreateBotMessage_FullMethodName    = "/message.MessageService/CreateBotMessage"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -33,6 +34,7 @@ type MessageServiceClient interface {
 	ReadMessage(ctx context.Context, in *RequestReadMessage, opts ...grpc.CallOption) (*ResponseReadMessage, error)
 	DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error)
 	PushMessage(ctx context.Context, in *RequestPushMessage, opts ...grpc.CallOption) (*ResponsePushMessage, error)
+	CreateBotMessage(ctx context.Context, in *RequestBotMessage, opts ...grpc.CallOption) (*ResponseBotMessage, error)
 }
 
 type messageServiceClient struct {
@@ -79,6 +81,15 @@ func (c *messageServiceClient) PushMessage(ctx context.Context, in *RequestPushM
 	return out, nil
 }
 
+func (c *messageServiceClient) CreateBotMessage(ctx context.Context, in *RequestBotMessage, opts ...grpc.CallOption) (*ResponseBotMessage, error) {
+	out := new(ResponseBotMessage)
+	err := c.cc.Invoke(ctx, MessageService_CreateBotMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility
@@ -87,6 +98,7 @@ type MessageServiceServer interface {
 	ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error)
 	DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error)
 	PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error)
+	CreateBotMessage(context.Context, *RequestBotMessage) (*ResponseBotMessage, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -105,6 +117,9 @@ func (UnimplementedMessageServiceServer) DecryptConversation(context.Context, *R
 }
 func (UnimplementedMessageServiceServer) PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) CreateBotMessage(context.Context, *RequestBotMessage) (*ResponseBotMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateBotMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -191,6 +206,24 @@ func _MessageService_PushMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_CreateBotMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestBotMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).CreateBotMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_CreateBotMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).CreateBotMessage(ctx, req.(*RequestBotMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -213,6 +246,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PushMessage",
 			Handler:    _MessageService_PushMessage_Handler,
+		},
+		{
+			MethodName: "CreateBotMessage",
+			Handler:    _MessageService_CreateBotMessage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

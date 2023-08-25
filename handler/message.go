@@ -104,11 +104,11 @@ func HandleCreateMessage(payload json.RawMessage) {
 	broadcast <- broadcastEvent
 
 	if reqCreateMsg.ConversationType == "bot" {
-		/*
-			1. bot user를 가져와서 meow 인 경우
-			2. chat gpt api mocha에 요청
-		*/
-		log.Println("bot message created")
+		_, err := createBotMessage(reqCreateMsg)
+		if err != nil {
+			log.Printf("Failed to create bot message: %v", err)
+			return
+		}
 	}
 }
 
@@ -135,9 +135,10 @@ func HandleReadMessage(payload json.RawMessage) {
 
 func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
 	createMsg := &msg.RequestCreateMessage{
-		SenderId:       reqCreateMsg.SenderId,
-		ConversationId: reqCreateMsg.ConversationId,
-		Text:           reqCreateMsg.Text,
+		SenderId:         reqCreateMsg.SenderId,
+		ConversationId:   reqCreateMsg.ConversationId,
+		ConversationType: reqCreateMsg.ConversationType,
+		Text:             reqCreateMsg.Text,
 	}
 
 	randIdx := rand.Intn(10)
@@ -201,6 +202,24 @@ func pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage,
 	randIdx := rand.Intn(10)
 	mutexes[randIdx].Lock()
 	resp, err := messageClient[randIdx].PushMessage(context.Background(), pushMsg)
+	mutexes[randIdx].Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMessage, error) {
+	createBotMsg := &msg.RequestBotMessage{
+		SenderId:         reqCreateMsg.SenderId,
+		ConversationId:   reqCreateMsg.ConversationId,
+		ConversationType: reqCreateMsg.ConversationType,
+		Text:             reqCreateMsg.Text,
+	}
+
+	randIdx := rand.Intn(10)
+	mutexes[randIdx].Lock()
+	resp, err := messageClient[randIdx].CreateBotMessage(context.Background(), createBotMsg)
 	mutexes[randIdx].Unlock()
 	if err != nil {
 		return nil, err
