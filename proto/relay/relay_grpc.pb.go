@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RelayService_RelayMessage_FullMethodName = "/relay.RelayService/RelayMessage"
+	RelayService_RelayMessage_FullMethodName             = "/relay.RelayService/RelayMessage"
+	RelayService_RelayCreatedConversation_FullMethodName = "/relay.RelayService/RelayCreatedConversation"
 )
 
 // RelayServiceClient is the client API for RelayService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RelayServiceClient interface {
 	RelayMessage(ctx context.Context, in *RequestRelayMessage, opts ...grpc.CallOption) (*ResponseRelayMessage, error)
+	RelayCreatedConversation(ctx context.Context, in *RequestRelayCreatedConversation, opts ...grpc.CallOption) (*ResponseRelayCreatedConversation, error)
 }
 
 type relayServiceClient struct {
@@ -46,11 +48,21 @@ func (c *relayServiceClient) RelayMessage(ctx context.Context, in *RequestRelayM
 	return out, nil
 }
 
+func (c *relayServiceClient) RelayCreatedConversation(ctx context.Context, in *RequestRelayCreatedConversation, opts ...grpc.CallOption) (*ResponseRelayCreatedConversation, error) {
+	out := new(ResponseRelayCreatedConversation)
+	err := c.cc.Invoke(ctx, RelayService_RelayCreatedConversation_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RelayServiceServer is the server API for RelayService service.
 // All implementations must embed UnimplementedRelayServiceServer
 // for forward compatibility
 type RelayServiceServer interface {
 	RelayMessage(context.Context, *RequestRelayMessage) (*ResponseRelayMessage, error)
+	RelayCreatedConversation(context.Context, *RequestRelayCreatedConversation) (*ResponseRelayCreatedConversation, error)
 	mustEmbedUnimplementedRelayServiceServer()
 }
 
@@ -60,6 +72,9 @@ type UnimplementedRelayServiceServer struct {
 
 func (UnimplementedRelayServiceServer) RelayMessage(context.Context, *RequestRelayMessage) (*ResponseRelayMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RelayMessage not implemented")
+}
+func (UnimplementedRelayServiceServer) RelayCreatedConversation(context.Context, *RequestRelayCreatedConversation) (*ResponseRelayCreatedConversation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RelayCreatedConversation not implemented")
 }
 func (UnimplementedRelayServiceServer) mustEmbedUnimplementedRelayServiceServer() {}
 
@@ -92,6 +107,24 @@ func _RelayService_RelayMessage_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RelayService_RelayCreatedConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestRelayCreatedConversation)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RelayServiceServer).RelayCreatedConversation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RelayService_RelayCreatedConversation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RelayServiceServer).RelayCreatedConversation(ctx, req.(*RequestRelayCreatedConversation))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RelayService_ServiceDesc is the grpc.ServiceDesc for RelayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -102,6 +135,10 @@ var RelayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RelayMessage",
 			Handler:    _RelayService_RelayMessage_Handler,
+		},
+		{
+			MethodName: "RelayCreatedConversation",
+			Handler:    _RelayService_RelayCreatedConversation_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

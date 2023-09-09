@@ -6,6 +6,7 @@ option go_package = "./relay";
 
 service RelayService {
   rpc RelayMessage (RequestRelayMessage) returns (ResponseRelayMessage);
+  rpc RelayCreatedConversation (RequestRelayCreatedConversation) returns (ResponseRelayCreatedConversation);
 }
 
 message Message {
@@ -18,9 +19,22 @@ message Message {
 
 message RequestRelayMessage {
   Message message = 1;
-  repeated int64 joined_users = 4;
+  repeated int64 joined_users = 2;
 }
 
 message ResponseRelayMessage {
 }
 
+message CreatedConversationPayload {
+  int64 conversation_id = 1;
+}
+
+message RequestRelayCreatedConversation {
+  string event = 1;
+  CreatedConversationPayload payload = 2;
+  repeated int64 joined_users = 3;
+}
+
+message ResponseRelayCreatedConversation {
+  
+}

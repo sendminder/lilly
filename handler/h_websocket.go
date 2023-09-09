@@ -83,29 +83,35 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
-	var reqMessage struct {
+	var clientRequest struct {
 		Event   string          `json:"event"`
 		Payload json.RawMessage `json:"payload"`
 	}
 
-	jsonErr := json.Unmarshal(message, &reqMessage)
+	jsonErr := json.Unmarshal(message, &clientRequest)
 	if jsonErr != nil {
 		log.Println("Json Error: ", jsonErr)
 		return
 	}
 
-	switch reqMessage.Event {
+	switch clientRequest.Event {
 	case "create_message":
-		HandleCreateMessage(reqMessage.Payload)
+		HandleCreateMessage(clientRequest.Payload)
 
 	case "read_message":
-		HandleReadMessage(reqMessage.Payload)
+		HandleReadMessage(clientRequest.Payload)
 
 	case "decrypt_conversation":
-		HandleDecryptConversation(reqMessage.Payload)
+		HandleDecryptConversation(clientRequest.Payload)
+
+	case "finish_conversation":
+		HandleFinishConversation(clientRequest.Payload)
+
+	case "register_role":
+		HandleRegisterRole(clientRequest.Payload)
 
 	default:
-		log.Println("Unknown event:", reqMessage.Event)
+		log.Println("Unknown event:", clientRequest.Event)
 	}
 }
 

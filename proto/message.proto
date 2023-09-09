@@ -8,8 +8,10 @@ service MessageService {
   rpc CreateMessage (RequestCreateMessage) returns (ResponseCreateMessage);
   rpc ReadMessage (RequestReadMessage) returns (ResponseReadMessage);
   rpc DecryptConversation (RequestDecryptConversation) returns (ResponseDecryptConversation);
+  rpc FinishConversation (RequestFinishConversation) returns (ResponseFinishConversation);
   rpc PushMessage (RequestPushMessage) returns (ResponsePushMessage);
   rpc CreateBotMessage (RequestBotMessage) returns (ResponseBotMessage);
+  rpc CreateConversation (RequestCreateConversation) returns (ResponseCreateConversation);
 }
 
 message RequestCreateMessage {
@@ -26,7 +28,11 @@ message RequestReadMessage {
 }
 
 message RequestDecryptConversation {
-  int64 conversation_id = 2;
+  int64 conversation_id = 1;
+}
+
+message RequestFinishConversation {
+  int64 conversation_id = 1;
 }
 
 message RequestPushMessage {
@@ -40,6 +46,12 @@ message RequestBotMessage {
   int64 conversation_id = 2;
   string conversation_type = 3;
   string text = 4;
+}
+
+message RequestCreateConversation {
+  string name = 1;
+  int64 host_user_id = 2;
+  repeated int64 joined_users = 3;
 }
 
 message Message {
@@ -69,6 +81,11 @@ message ResponseDecryptConversation {
   string error_message = 2;
 }
 
+message ResponseFinishConversation {
+  string status = 1;
+  string error_message = 2;
+}
+
 message ResponsePushMessage {
   string status = 1;
   string error_message = 2;
@@ -77,4 +94,8 @@ message ResponsePushMessage {
 message ResponseBotMessage {
   string status = 1;
   string error_message = 2;
+}
+
+message ResponseCreateConversation {
+  int64 conversation_id = 1;
 }

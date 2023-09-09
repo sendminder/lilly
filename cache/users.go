@@ -78,3 +78,25 @@ func GetUserLocations(userIDs []int64) (map[int64]string, error) {
 
 	return locations, nil
 }
+
+func EnqueueReadyUser(roleType string, userId int64) bool {
+	key := "queue" + roleType
+	_, err := RedisClient.LPush(context.Background(), key, userId).Result()
+	if err != nil {
+		log.Println("Error enqueuing user:", err)
+		return false
+	}
+	log.Printf("[EnqueueReadyUser] key=%s, userId=%d", key, userId)
+	return true
+}
+
+func DequeueReadyUser(roleType string) (int64, error) {
+	key := "queue" + roleType
+	userId, err := RedisClient.RPop(context.Background(), key).Int64()
+	if err != nil && err != redis.Nil {
+		fmt.Println("Error dequeuing user:", err)
+		return 0, err
+	}
+	log.Printf("[DequeueReadyUser] key=%s, userId=%d", key, userId)
+	return userId, nil
+}
