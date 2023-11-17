@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"lilly/cache"
-	"lilly/config"
+	"lilly/internal/cache"
+	"lilly/internal/config"
+	protocol2 "lilly/internal/protocol"
 	"lilly/proto/relay"
-	"lilly/protocol"
 	"log"
 )
 
@@ -17,7 +17,7 @@ const (
 )
 
 func HandleRegisterRole(payload json.RawMessage) {
-	var reqRegisterRole protocol.RegisterRole
+	var reqRegisterRole protocol2.RegisterRole
 	jsonErr := json.Unmarshal(payload, &reqRegisterRole)
 	if jsonErr != nil {
 		log.Println("Json Error: ", jsonErr)
@@ -32,7 +32,7 @@ func HandleRegisterRole(payload json.RawMessage) {
 	}
 }
 
-func registerRole(reqRegisterRole protocol.RegisterRole) error {
+func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	// TODO
 	// 1. check redis rabbit or bear
 	// 2. if exist create conversation
@@ -123,7 +123,7 @@ func relayCreatedConversation(convId int64, joinedUsers []int64, targetIP string
 }
 
 func relayEvent(eventName string, relayLocalUsers []int64, payload []byte) {
-	broadcastEvent := protocol.BroadcastEvent{
+	broadcastEvent := protocol2.BroadcastEvent{
 		Event:       eventName,
 		Payload:     payload,
 		JoinedUsers: relayLocalUsers,

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"lilly/cache"
-	"lilly/handler"
+	"lilly/internal/cache"
+	handler2 "lilly/internal/handler"
 	"sync"
 )
 
@@ -11,8 +11,8 @@ func main() {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go handler.StartRelayServer(&wg)
-	go handler.StartWebSocketServer(&wg)
+	go handler2.StartRelayServer(&wg)
+	go handler2.StartWebSocketServer(&wg)
 
 	wg.Wait()
 }

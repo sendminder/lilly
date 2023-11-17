@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"lilly/config"
+	"lilly/internal/config"
 	"log"
 
 	"github.com/go-redis/redis/v8"

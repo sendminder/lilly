@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"lilly/internal/protocol"
 	msg "lilly/proto/message"
-	"lilly/protocol"
 	"log"
 	"math/rand"
 )

@@ -2,9 +2,9 @@ package handler
 
 import (
 	"context"
-	"lilly/config"
+	"lilly/internal/config"
+	"lilly/internal/protocol"
 	relay "lilly/proto/relay"
-	"lilly/protocol"
 	"log"
 	"math/rand"
 	"net"

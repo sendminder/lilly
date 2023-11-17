@@ -3,9 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"lilly/cache"
-	"lilly/config"
-	"lilly/protocol"
+	"lilly/internal/cache"
+	"lilly/internal/config"
+	"lilly/internal/protocol"
 	"log"
 	"net/http"
 	"strconv"
