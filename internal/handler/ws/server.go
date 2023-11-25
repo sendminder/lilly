@@ -6,17 +6,14 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
+	"lilly/client/message"
+	"lilly/client/relay"
 	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
 	"lilly/internal/util"
-	"lilly/proto/message"
 )
 
 type WebSocketServer interface {
@@ -28,15 +25,6 @@ type WebSocketServer interface {
 }
 
 var _ WebSocketServer = (*webSocketServer)(nil)
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		// 모든 origin을 허용하도록 설정합니다.
-		return true
-	},
-}
 
 type client struct {
 	conn   *websocket.Conn
@@ -51,34 +39,41 @@ type webSocketServer struct {
 	broadcast     chan protocol.BroadcastEvent
 	register      chan *client
 	unregister    chan *client
-	messageConn   *grpc.ClientConn
-	messageClient []message.MessageServiceClient
-	mutexes       []sync.Mutex
 	clientLock    []sync.Mutex
+	upgrader      websocket.Upgrader
+	relayClient   relay.Client
+	messageClient message.Client
 }
 
-func NewWebSocketServer() WebSocketServer {
+func NewWebSocketServer(relayClient relay.Client, messageClient message.Client) WebSocketServer {
 	activeClients := make(clientMap)
 	broadcast := make(chan protocol.BroadcastEvent)
 	register := make(chan *client)
 	unregister := make(chan *client)
-	messageClient := make([]message.MessageServiceClient, 10)
-	mutexes := make([]sync.Mutex, 10)
 	clientLock := make([]sync.Mutex, 10)
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			// 모든 origin을 허용하도록 설정합니다.
+			return true
+		},
+	}
 	return &webSocketServer{
 		activeClients: activeClients,
 		broadcast:     broadcast,
 		register:      register,
 		unregister:    unregister,
-		messageClient: messageClient,
-		mutexes:       mutexes,
 		clientLock:    clientLock,
+		upgrader:      upgrader,
+		relayClient:   relayClient,
+		messageClient: messageClient,
 	}
 }
 
 func (wv *webSocketServer) StartWebSocketServer(wg *sync.WaitGroup, port int) {
 	defer wg.Done()
-	wv.createMessageConnection()
+	wv.messageClient.CreateMessageConnection()
 
 	http.HandleFunc("/", wv.handleWebSocketConnection)
 
@@ -94,7 +89,7 @@ func (wv *webSocketServer) StartWebSocketServer(wg *sync.WaitGroup, port int) {
 }
 
 func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := wv.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("Error upgrading connection", "error", err)
 		return
@@ -257,26 +252,4 @@ func (m clientMap) delete(key int64) bool {
 		return true
 	}
 	return false
-}
-
-func (wv *webSocketServer) createMessageConnection() {
-	mochaIP := config.GetString("mocha.ip")
-	mochaPort := config.GetString("mocha.port")
-
-	messageConn, err := grpc.Dial(mochaIP+":"+mochaPort,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithKeepaliveParams(
-			keepalive.ClientParameters{
-				Time:                3600 * time.Second,
-				Timeout:             3 * time.Second,
-				PermitWithoutStream: true,
-			},
-		))
-	if err != nil {
-		slog.Error("failed to connect grpc", "error", err)
-	}
-	for i := 0; i < 10; i++ {
-		wv.messageClient[i] = message.NewMessageServiceClient(messageConn)
-		slog.Info("mocha client connection", "mocha", mochaIP+mochaPort+"["+strconv.Itoa(i)+"]")
-	}
 }

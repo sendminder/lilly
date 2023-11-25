@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"math/rand"
 
 	"lilly/internal/cache"
 	"lilly/internal/config"
@@ -151,10 +150,7 @@ func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*
 		Text:        reqCreateMsg.Text,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].CreateMessage(context.Background(), createMsg)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().CreateMessage(context.Background(), createMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -178,10 +174,7 @@ func (wv *webSocketServer) readMessage(reqReadMsg protocol.ReadMessage) (*msg.Re
 		MessageId: reqReadMsg.MessageId,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].ReadMessage(context.Background(), readMsg)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().ReadMessage(context.Background(), readMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -195,10 +188,7 @@ func (wv *webSocketServer) pushMessage(req *msg.Message, receivers []int64) (*ms
 		ReceiverUserIds: receivers,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].PushMessage(context.Background(), pushMsg)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().PushMessage(context.Background(), pushMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -213,10 +203,7 @@ func (wv *webSocketServer) createBotMessage(reqCreateMsg protocol.CreateMessage)
 		Text:        reqCreateMsg.Text,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].CreateBotMessage(context.Background(), createBotMsg)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().CreateBotMessage(context.Background(), createBotMsg)
 	if err != nil {
 		return nil, err
 	}

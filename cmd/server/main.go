@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/spf13/viper"
+	"lilly/client/message"
+	"lilly/client/relay"
 	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/handler/grpc"
@@ -31,7 +33,9 @@ func run(ctx context.Context) error {
 	relayServer := grpc.NewRelayServer()
 	go relayServer.StartRelayServer(&wg)
 
-	webSocketServer := ws.NewWebSocketServer()
+	relayClient := relay.NewRelayClient()
+	messageClient := message.NewMessageClient(10)
+	webSocketServer := ws.NewWebSocketServer(relayClient, messageClient)
 	go webSocketServer.StartWebSocketServer(&wg, config.GetInt("websocket.port"))
 
 	wg.Wait()

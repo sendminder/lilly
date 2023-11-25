@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"math/rand"
 
 	"lilly/internal/protocol"
 	msg "lilly/proto/message"
@@ -63,10 +62,7 @@ func (wv *webSocketServer) createChannel(name string, userId int64, joinedUsers 
 		JoinedUsers: joinedUsers,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].CreateChannel(context.Background(), createChannel)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().CreateChannel(context.Background(), createChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -78,10 +74,7 @@ func (wv *webSocketServer) decryptChannel(reqDecryptChannel protocol.DecryptChan
 		ChannelId: reqDecryptChannel.ChannelId,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].DecryptChannel(context.Background(), decryptChannel)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().DecryptChannel(context.Background(), decryptChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +86,7 @@ func (wv *webSocketServer) finishChannel(reqFinishChannel protocol.FinishChannel
 		ChannelId: reqFinishChannel.ChannelId,
 	}
 
-	randIdx := rand.Intn(10)
-	wv.mutexes[randIdx].Lock()
-	resp, err := wv.messageClient[randIdx].FinishChannel(context.Background(), finishChannel)
-	wv.mutexes[randIdx].Unlock()
+	resp, err := wv.messageClient.GetMessageClient().FinishChannel(context.Background(), finishChannel)
 	if err != nil {
 		return nil, err
 	}
