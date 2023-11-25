@@ -3,10 +3,10 @@ package cache
 import (
 	"context"
 	"fmt"
-	"lilly/internal/config"
 	"log"
 
 	"github.com/go-redis/redis/v8"
+	"lilly/internal/config"
 )
 
 var RedisClient *redis.Client

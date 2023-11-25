@@ -5,6 +5,6 @@ mocha:
   port: "3100"
 redis:
   ip: "localhost"
-  port: "26379"
+  port: "26380"
   password: ""
  

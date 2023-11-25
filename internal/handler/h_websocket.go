@@ -3,18 +3,20 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"lilly/internal/cache"
-	"lilly/internal/config"
-	"lilly/internal/protocol"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
-
-	"lilly/proto/message"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
+	"lilly/internal/cache"
+	"lilly/internal/config"
+	"lilly/internal/protocol"
+	"lilly/proto/message"
 )
 
 var upgrader = websocket.Upgrader{
@@ -237,7 +239,15 @@ func createMessageConnection() {
 	mochaIP := config.GetString("mocha.ip")
 	mochaPort := config.GetString("mocha.port")
 
-	messageConn, err := grpc.Dial(mochaIP+":"+mochaPort, grpc.WithInsecure())
+	messageConn, err := grpc.Dial(mochaIP+":"+mochaPort,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(
+			keepalive.ClientParameters{
+				Time:                25 * time.Second,
+				Timeout:             3 * time.Second,
+				PermitWithoutStream: true,
+			},
+		))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}

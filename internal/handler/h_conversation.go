@@ -3,10 +3,11 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"lilly/internal/protocol"
-	msg "lilly/proto/message"
 	"log"
 	"math/rand"
+
+	"lilly/internal/protocol"
+	msg "lilly/proto/message"
 )
 
 func HandleDecryptConversation(payload json.RawMessage) {

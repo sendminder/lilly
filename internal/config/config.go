@@ -9,7 +9,7 @@ import (
 
 var LocalIP string
 
-func init() {
+func Init() {
 	loadConfig()
 	LocalIP = getLocalIP()
 	if LocalIP == "" {
@@ -20,7 +20,7 @@ func init() {
 
 func loadConfig() {
 	log.Println("Config Loaded")
-	viper.SetConfigFile("./config/config.yaml")
+	viper.SetConfigFile("config.yaml")
 	if err := viper.ReadInConfig(); err != nil {
 		log.Println("Failed to read config file:", err)
 		return

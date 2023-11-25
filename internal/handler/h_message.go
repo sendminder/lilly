@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math/rand"
+
 	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
 	msg "lilly/proto/message"
 	relay "lilly/proto/relay"
-	"log"
-	"math/rand"
 )
 
 func HandleCreateMessage(payload json.RawMessage) {

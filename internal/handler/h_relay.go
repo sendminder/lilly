@@ -2,15 +2,18 @@ package handler
 
 import (
 	"context"
-	"lilly/internal/config"
-	"lilly/internal/protocol"
-	relay "lilly/proto/relay"
 	"log"
 	"math/rand"
 	"net"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
+	"lilly/internal/config"
+	"lilly/internal/protocol"
+	relay "lilly/proto/relay"
 )
 
 type relayServer struct {
@@ -71,7 +74,15 @@ func GetRelayClient(target string) relay.RelayServiceClient {
 }
 
 func createRelayClient(target string) {
-	relayConn, err := grpc.Dial(target+":"+relayPort, grpc.WithInsecure())
+	relayConn, err := grpc.Dial(target+":"+relayPort,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithKeepaliveParams(
+			keepalive.ClientParameters{
+				Time:                25 * time.Second,
+				Timeout:             3 * time.Second,
+				PermitWithoutStream: true,
+			},
+		))
 	if err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
