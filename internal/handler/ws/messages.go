@@ -1,4 +1,4 @@
-package handler
+package ws
 
 import (
 	"context"
@@ -9,11 +9,17 @@ import (
 	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
+	"lilly/internal/util"
 	msg "lilly/proto/message"
-	relay "lilly/proto/relay"
+	"lilly/proto/relay"
 )
 
-func HandleCreateMessage(payload json.RawMessage) {
+type MessageHandler interface {
+	handleCreateMessage(payload json.RawMessage)
+	handleReadMessage(payload json.RawMessage)
+}
+
+func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 	var reqCreateMsg protocol.CreateMessage
 	err := json.Unmarshal(payload, &reqCreateMsg)
 	if err != nil {
@@ -29,7 +35,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	slog.Info("[ReqCreateMessage]", "channelId", reqCreateMsg.ChannelId, "text", reqCreateMsg.Text)
 
 	// 메시지 생성 요청
-	resp, err := createMessage(reqCreateMsg)
+	resp, err := wv.createMessage(reqCreateMsg)
 	if err != nil {
 		slog.Error("Failed to create message", "error", err)
 		return
@@ -54,7 +60,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 			notFoundUsers = append(notFoundUsers, userId)
 			continue
 		}
-		if location != config.LocalIP+":"+config.GetString("websocket.port") {
+		if location != config.LocalIP+":"+config.GetString("ws.port") {
 			targetRelayMap[location] = append(targetRelayMap[location], userId)
 		}
 	}
@@ -68,7 +74,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 
 	for targetLocation, users := range targetRelayMap {
-		targetIP := targetLocation[:len(targetLocation)-len(config.GetString("websocket.port"))-1]
+		targetIP := targetLocation[:len(targetLocation)-len(config.GetString("ws.port"))-1]
 		// 메시지 릴레이
 		if len(users) == 0 {
 			continue
@@ -87,13 +93,13 @@ func HandleCreateMessage(payload json.RawMessage) {
 
 	if len(notFoundUsers) > 0 {
 		slog.Info("PushMessage to", "notFoundUsers", notFoundUsers)
-		_, err := pushMessage(resp.Message, notFoundUsers)
+		_, err := wv.pushMessage(resp.Message, notFoundUsers)
 		if err != nil {
 			slog.Error("Failed to push message", "error", err)
 		}
 	}
 
-	jsonData, err := createJsonData("message", resp.Message)
+	jsonData, err := util.CreateJsonData("message", resp.Message)
 	if err != nil {
 		slog.Error("Failed to marshal Json", "error", err)
 		return
@@ -105,10 +111,10 @@ func HandleCreateMessage(payload json.RawMessage) {
 		JoinedUsers: resp.JoinedUsers,
 	}
 
-	broadcast <- broadcastEvent
+	wv.broadcast <- broadcastEvent
 
 	if reqCreateMsg.ChannelType == "bot" {
-		_, err := createBotMessage(reqCreateMsg)
+		_, err := wv.createBotMessage(reqCreateMsg)
 		if err != nil {
 			slog.Error("Failed to create bot message", "error", err)
 			return
@@ -116,7 +122,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 }
 
-func HandleReadMessage(payload json.RawMessage) {
+func (wv *webSocketServer) handleReadMessage(payload json.RawMessage) {
 	var reqReadMsg protocol.ReadMessage
 	jsonErr := json.Unmarshal(payload, &reqReadMsg)
 	if jsonErr != nil {
@@ -126,7 +132,7 @@ func HandleReadMessage(payload json.RawMessage) {
 
 	// 받은 메시지를 출력합니다.
 	slog.Info("[ReqReadMessage]", "channelId", reqReadMsg.ChannelId, "messageId", reqReadMsg.MessageId)
-	resp, err := readMessage(reqReadMsg)
+	resp, err := wv.readMessage(reqReadMsg)
 	if err != nil {
 		slog.Error("Failed to read message", "error", err)
 		return
@@ -137,7 +143,7 @@ func HandleReadMessage(payload json.RawMessage) {
 	// read_message 릴레이하면, 클라에서 안읽은 유저수 카운트 처리할수있나?
 }
 
-func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
+func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
 	createMsg := &msg.RequestCreateMessage{
 		SenderId:    reqCreateMsg.SenderId,
 		ChannelId:   reqCreateMsg.ChannelId,
@@ -146,9 +152,9 @@ func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMess
 	}
 
 	randIdx := rand.Intn(10)
-	mutexes[randIdx].Lock()
-	resp, err := messageClient[randIdx].CreateMessage(context.Background(), createMsg)
-	mutexes[randIdx].Unlock()
+	wv.mutexes[randIdx].Lock()
+	resp, err := wv.messageClient[randIdx].CreateMessage(context.Background(), createMsg)
+	wv.mutexes[randIdx].Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -156,15 +162,16 @@ func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMess
 }
 
 func relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string) (*relay.ResponseRelayMessage, error) {
-	client := GetRelayClient(targetIP)
-	resp, err := client.RelayMessage(context.Background(), relayMsg)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	//client := grpc.GetRelayClient(targetIP)
+	//resp, err := client.RelayMessage(context.Background(), relayMsg)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return resp, nil
+	return nil, nil
 }
 
-func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
+func (wv *webSocketServer) readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
 	readMsg := &msg.RequestReadMessage{
 		UserId:    reqReadMsg.UserId,
 		ChannelId: reqReadMsg.ChannelId,
@@ -172,31 +179,16 @@ func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, err
 	}
 
 	randIdx := rand.Intn(10)
-	mutexes[randIdx].Lock()
-	resp, err := messageClient[randIdx].ReadMessage(context.Background(), readMsg)
-	mutexes[randIdx].Unlock()
+	wv.mutexes[randIdx].Lock()
+	resp, err := wv.messageClient[randIdx].ReadMessage(context.Background(), readMsg)
+	wv.mutexes[randIdx].Unlock()
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-// key, value로 마샬링
-func createJsonData(key string, value interface{}) ([]byte, error) {
-	data := map[string]interface{}{
-		key: value,
-	}
-
-	// JSON 마샬링
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonData, nil
-}
-
-func pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage, error) {
+func (wv *webSocketServer) pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage, error) {
 	pushMsg := &msg.RequestPushMessage{
 		SenderId:        req.SenderId,
 		Message:         req,
@@ -204,16 +196,16 @@ func pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage,
 	}
 
 	randIdx := rand.Intn(10)
-	mutexes[randIdx].Lock()
-	resp, err := messageClient[randIdx].PushMessage(context.Background(), pushMsg)
-	mutexes[randIdx].Unlock()
+	wv.mutexes[randIdx].Lock()
+	resp, err := wv.messageClient[randIdx].PushMessage(context.Background(), pushMsg)
+	wv.mutexes[randIdx].Unlock()
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMessage, error) {
+func (wv *webSocketServer) createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMessage, error) {
 	createBotMsg := &msg.RequestBotMessage{
 		SenderId:    reqCreateMsg.SenderId,
 		ChannelId:   reqCreateMsg.ChannelId,
@@ -222,9 +214,9 @@ func createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMess
 	}
 
 	randIdx := rand.Intn(10)
-	mutexes[randIdx].Lock()
-	resp, err := messageClient[randIdx].CreateBotMessage(context.Background(), createBotMsg)
-	mutexes[randIdx].Unlock()
+	wv.mutexes[randIdx].Lock()
+	resp, err := wv.messageClient[randIdx].CreateBotMessage(context.Background(), createBotMsg)
+	wv.mutexes[randIdx].Unlock()
 	if err != nil {
 		return nil, err
 	}

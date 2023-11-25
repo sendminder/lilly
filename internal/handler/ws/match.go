@@ -1,7 +1,6 @@
-package handler
+package ws
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -17,7 +16,11 @@ const (
 	ROLE_RABBIT = "rabbit"
 )
 
-func HandleRegisterRole(payload json.RawMessage) {
+type MatchHandler interface {
+	handleRegisterRole(payload json.RawMessage)
+}
+
+func (wv *webSocketServer) handleRegisterRole(payload json.RawMessage) {
 	var reqRegisterRole protocol2.RegisterRole
 	jsonErr := json.Unmarshal(payload, &reqRegisterRole)
 	if jsonErr != nil {
@@ -26,14 +29,14 @@ func HandleRegisterRole(payload json.RawMessage) {
 	}
 
 	slog.Info("[ReqRegisterRole]", "userId", reqRegisterRole.UserId, "roleType", reqRegisterRole.RoleType)
-	err := registerRole(reqRegisterRole)
+	err := wv.registerRole(reqRegisterRole)
 	if err != nil {
 		slog.Error("Failed to read message", "error", err)
 		return
 	}
 }
 
-func registerRole(reqRegisterRole protocol2.RegisterRole) error {
+func (wv *webSocketServer) registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	// TODO
 	// 1. check redis rabbit or bear
 	// 2. if exist create channel
@@ -58,7 +61,7 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 
 	targetUserId, err := cache.DequeueReadyUser(targetRole)
 	if err != nil || targetUserId == 0 {
-		readyToUser(myRole, myUserId)
+		wv.readyToUser(myRole, myUserId)
 		return nil
 	}
 
@@ -66,13 +69,13 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	// targetUserId
 	targetLocation, err := cache.GetUserLocation(targetUserId)
 	if err != nil || targetLocation == "" {
-		readyToUser(myRole, myUserId)
+		wv.readyToUser(myRole, myUserId)
 		return nil
 	}
 
 	// create channel
 	joinedUsers := []int64{myUserId, targetUserId}
-	res, err := CreateChannel("BareRabbit", myUserId, joinedUsers)
+	res, err := wv.createChannel("BareRabbit", myUserId, joinedUsers)
 	if err != nil {
 		slog.Error("[Error] cant create channel", "myUserId", myUserId)
 		return err
@@ -89,46 +92,47 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 			// 오류 처리를 수행하거나 로깅합니다.
 			return err
 		}
-		relayEvent("created_channel", joinedUsers, payloadBytes)
+		wv.relayEvent("created_channel", joinedUsers, payloadBytes)
 		return nil
 	}
 
-	relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation)
+	wv.relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation)
 
 	return nil
 }
 
-func readyToUser(myRole string, myUserId int64) {
+func (wv *webSocketServer) readyToUser(myRole string, myUserId int64) {
 	cache.EnqueueReadyUser(myRole, myUserId)
 	// send event "ready"
-	relayEvent("ready", []int64{myUserId}, []byte{})
+	wv.relayEvent("ready", []int64{myUserId}, []byte{})
 	slog.Info("not found ready user", "userId", myUserId)
 }
 
-func relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedChannel, error) {
-	payload := &relay.CreatedChannelPayload{
-		ChannelId: channelId,
-	}
-	reqCreatedChannel := &relay.RequestRelayCreatedChannel{
-		Event:       "created_channel",
-		Payload:     payload,
-		JoinedUsers: joinedUsers,
-	}
+func (wv *webSocketServer) relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedChannel, error) {
+	//payload := &relay.CreatedChannelPayload{
+	//	ChannelId: channelId,
+	//}
+	//reqCreatedChannel := &relay.RequestRelayCreatedChannel{
+	//	Event:       "created_channel",
+	//	Payload:     payload,
+	//	JoinedUsers: joinedUsers,
+	//}
 
-	client := GetRelayClient(targetIP)
-	resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	//client := grpc.GetRelayClient(targetIP)
+	//resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return resp, nil
+	return nil, nil
 }
 
-func relayEvent(eventName string, relayLocalUsers []int64, payload []byte) {
+func (wv *webSocketServer) relayEvent(eventName string, relayLocalUsers []int64, payload []byte) {
 	broadcastEvent := protocol2.BroadcastEvent{
 		Event:       eventName,
 		Payload:     payload,
 		JoinedUsers: relayLocalUsers,
 	}
 
-	broadcast <- broadcastEvent
+	wv.broadcast <- broadcastEvent
 }

@@ -8,7 +8,8 @@ import (
 	"github.com/spf13/viper"
 	"lilly/internal/cache"
 	"lilly/internal/config"
-	"lilly/internal/handler"
+	"lilly/internal/handler/grpc"
+	"lilly/internal/handler/ws"
 )
 
 func main() {
@@ -27,8 +28,11 @@ func run(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go handler.StartRelayServer(&wg)
-	go handler.StartWebSocketServer(&wg, config.GetInt("websocket.port"))
+	relayServer := grpc.NewRelayServer()
+	go relayServer.StartRelayServer(&wg)
+
+	webSocketServer := ws.NewWebSocketServer()
+	go webSocketServer.StartWebSocketServer(&wg, config.GetInt("websocket.port"))
 
 	wg.Wait()
 
