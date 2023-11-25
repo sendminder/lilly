@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RelayServiceClient interface {
 	RelayMessage(ctx context.Context, in *RequestRelayMessage, opts ...grpc.CallOption) (*ResponseRelayMessage, error)
-	RelayCreatedConversation(ctx context.Context, in *RequestRelayCreatedConversation, opts ...grpc.CallOption) (*ResponseRelayCreatedConversation, error)
+	RelayCreatedChannel(ctx context.Context, in *RequestRelayCreatedChannel, opts ...grpc.CallOption) (*ResponseRelayCreatedChannel, error)
 }
 
 type relayServiceClient struct {
@@ -43,9 +43,9 @@ func (c *relayServiceClient) RelayMessage(ctx context.Context, in *RequestRelayM
 	return out, nil
 }
 
-func (c *relayServiceClient) RelayCreatedConversation(ctx context.Context, in *RequestRelayCreatedConversation, opts ...grpc.CallOption) (*ResponseRelayCreatedConversation, error) {
-	out := new(ResponseRelayCreatedConversation)
-	err := c.cc.Invoke(ctx, "/relay.RelayService/RelayCreatedConversation", in, out, opts...)
+func (c *relayServiceClient) RelayCreatedChannel(ctx context.Context, in *RequestRelayCreatedChannel, opts ...grpc.CallOption) (*ResponseRelayCreatedChannel, error) {
+	out := new(ResponseRelayCreatedChannel)
+	err := c.cc.Invoke(ctx, "/relay.RelayService/RelayCreatedChannel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *relayServiceClient) RelayCreatedConversation(ctx context.Context, in *R
 // for forward compatibility
 type RelayServiceServer interface {
 	RelayMessage(context.Context, *RequestRelayMessage) (*ResponseRelayMessage, error)
-	RelayCreatedConversation(context.Context, *RequestRelayCreatedConversation) (*ResponseRelayCreatedConversation, error)
+	RelayCreatedChannel(context.Context, *RequestRelayCreatedChannel) (*ResponseRelayCreatedChannel, error)
 	mustEmbedUnimplementedRelayServiceServer()
 }
 
@@ -68,8 +68,8 @@ type UnimplementedRelayServiceServer struct {
 func (UnimplementedRelayServiceServer) RelayMessage(context.Context, *RequestRelayMessage) (*ResponseRelayMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RelayMessage not implemented")
 }
-func (UnimplementedRelayServiceServer) RelayCreatedConversation(context.Context, *RequestRelayCreatedConversation) (*ResponseRelayCreatedConversation, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RelayCreatedConversation not implemented")
+func (UnimplementedRelayServiceServer) RelayCreatedChannel(context.Context, *RequestRelayCreatedChannel) (*ResponseRelayCreatedChannel, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RelayCreatedChannel not implemented")
 }
 func (UnimplementedRelayServiceServer) mustEmbedUnimplementedRelayServiceServer() {}
 
@@ -102,20 +102,20 @@ func _RelayService_RelayMessage_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RelayService_RelayCreatedConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestRelayCreatedConversation)
+func _RelayService_RelayCreatedChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestRelayCreatedChannel)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RelayServiceServer).RelayCreatedConversation(ctx, in)
+		return srv.(RelayServiceServer).RelayCreatedChannel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/relay.RelayService/RelayCreatedConversation",
+		FullMethod: "/relay.RelayService/RelayCreatedChannel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RelayServiceServer).RelayCreatedConversation(ctx, req.(*RequestRelayCreatedConversation))
+		return srv.(RelayServiceServer).RelayCreatedChannel(ctx, req.(*RequestRelayCreatedChannel))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -132,8 +132,8 @@ var RelayService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RelayService_RelayMessage_Handler,
 		},
 		{
-			MethodName: "RelayCreatedConversation",
-			Handler:    _RelayService_RelayCreatedConversation_Handler,
+			MethodName: "RelayCreatedChannel",
+			Handler:    _RelayService_RelayCreatedChannel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

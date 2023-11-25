@@ -6,12 +6,12 @@ option go_package = "./relay";
 
 service RelayService {
   rpc RelayMessage (RequestRelayMessage) returns (ResponseRelayMessage);
-  rpc RelayCreatedConversation (RequestRelayCreatedConversation) returns (ResponseRelayCreatedConversation);
+  rpc RelayCreatedChannel (RequestRelayCreatedChannel) returns (ResponseRelayCreatedChannel);
 }
 
 message Message {
   int64 id = 1;
-  int64 conversation_id = 2;
+  int64 channel_id = 2;
   int64 sender_id = 3;
   string text = 4;
   string animal = 5;
@@ -25,16 +25,16 @@ message RequestRelayMessage {
 message ResponseRelayMessage {
 }
 
-message CreatedConversationPayload {
-  int64 conversation_id = 1;
+message CreatedChannelPayload {
+  int64 channel_id = 1;
 }
 
-message RequestRelayCreatedConversation {
+message RequestRelayCreatedChannel {
   string event = 1;
-  CreatedConversationPayload payload = 2;
+  CreatedChannelPayload payload = 2;
   repeated int64 joined_users = 3;
 }
 
-message ResponseRelayCreatedConversation {
+message ResponseRelayCreatedChannel {
   
 }

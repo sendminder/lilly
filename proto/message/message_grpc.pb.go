@@ -24,11 +24,11 @@ const _ = grpc.SupportPackageIsVersion7
 type MessageServiceClient interface {
 	CreateMessage(ctx context.Context, in *RequestCreateMessage, opts ...grpc.CallOption) (*ResponseCreateMessage, error)
 	ReadMessage(ctx context.Context, in *RequestReadMessage, opts ...grpc.CallOption) (*ResponseReadMessage, error)
-	DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error)
-	FinishConversation(ctx context.Context, in *RequestFinishConversation, opts ...grpc.CallOption) (*ResponseFinishConversation, error)
+	DecryptChannel(ctx context.Context, in *RequestDecryptChannel, opts ...grpc.CallOption) (*ResponseDecryptChannel, error)
+	FinishChannel(ctx context.Context, in *RequestFinishChannel, opts ...grpc.CallOption) (*ResponseFinishChannel, error)
 	PushMessage(ctx context.Context, in *RequestPushMessage, opts ...grpc.CallOption) (*ResponsePushMessage, error)
 	CreateBotMessage(ctx context.Context, in *RequestBotMessage, opts ...grpc.CallOption) (*ResponseBotMessage, error)
-	CreateConversation(ctx context.Context, in *RequestCreateConversation, opts ...grpc.CallOption) (*ResponseCreateConversation, error)
+	CreateChannel(ctx context.Context, in *RequestCreateChannel, opts ...grpc.CallOption) (*ResponseCreateChannel, error)
 }
 
 type messageServiceClient struct {
@@ -57,18 +57,18 @@ func (c *messageServiceClient) ReadMessage(ctx context.Context, in *RequestReadM
 	return out, nil
 }
 
-func (c *messageServiceClient) DecryptConversation(ctx context.Context, in *RequestDecryptConversation, opts ...grpc.CallOption) (*ResponseDecryptConversation, error) {
-	out := new(ResponseDecryptConversation)
-	err := c.cc.Invoke(ctx, "/message.MessageService/DecryptConversation", in, out, opts...)
+func (c *messageServiceClient) DecryptChannel(ctx context.Context, in *RequestDecryptChannel, opts ...grpc.CallOption) (*ResponseDecryptChannel, error) {
+	out := new(ResponseDecryptChannel)
+	err := c.cc.Invoke(ctx, "/message.MessageService/DecryptChannel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *messageServiceClient) FinishConversation(ctx context.Context, in *RequestFinishConversation, opts ...grpc.CallOption) (*ResponseFinishConversation, error) {
-	out := new(ResponseFinishConversation)
-	err := c.cc.Invoke(ctx, "/message.MessageService/FinishConversation", in, out, opts...)
+func (c *messageServiceClient) FinishChannel(ctx context.Context, in *RequestFinishChannel, opts ...grpc.CallOption) (*ResponseFinishChannel, error) {
+	out := new(ResponseFinishChannel)
+	err := c.cc.Invoke(ctx, "/message.MessageService/FinishChannel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +93,9 @@ func (c *messageServiceClient) CreateBotMessage(ctx context.Context, in *Request
 	return out, nil
 }
 
-func (c *messageServiceClient) CreateConversation(ctx context.Context, in *RequestCreateConversation, opts ...grpc.CallOption) (*ResponseCreateConversation, error) {
-	out := new(ResponseCreateConversation)
-	err := c.cc.Invoke(ctx, "/message.MessageService/CreateConversation", in, out, opts...)
+func (c *messageServiceClient) CreateChannel(ctx context.Context, in *RequestCreateChannel, opts ...grpc.CallOption) (*ResponseCreateChannel, error) {
+	out := new(ResponseCreateChannel)
+	err := c.cc.Invoke(ctx, "/message.MessageService/CreateChannel", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +108,11 @@ func (c *messageServiceClient) CreateConversation(ctx context.Context, in *Reque
 type MessageServiceServer interface {
 	CreateMessage(context.Context, *RequestCreateMessage) (*ResponseCreateMessage, error)
 	ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error)
-	DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error)
-	FinishConversation(context.Context, *RequestFinishConversation) (*ResponseFinishConversation, error)
+	DecryptChannel(context.Context, *RequestDecryptChannel) (*ResponseDecryptChannel, error)
+	FinishChannel(context.Context, *RequestFinishChannel) (*ResponseFinishChannel, error)
 	PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error)
 	CreateBotMessage(context.Context, *RequestBotMessage) (*ResponseBotMessage, error)
-	CreateConversation(context.Context, *RequestCreateConversation) (*ResponseCreateConversation, error)
+	CreateChannel(context.Context, *RequestCreateChannel) (*ResponseCreateChannel, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -126,11 +126,11 @@ func (UnimplementedMessageServiceServer) CreateMessage(context.Context, *Request
 func (UnimplementedMessageServiceServer) ReadMessage(context.Context, *RequestReadMessage) (*ResponseReadMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadMessage not implemented")
 }
-func (UnimplementedMessageServiceServer) DecryptConversation(context.Context, *RequestDecryptConversation) (*ResponseDecryptConversation, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DecryptConversation not implemented")
+func (UnimplementedMessageServiceServer) DecryptChannel(context.Context, *RequestDecryptChannel) (*ResponseDecryptChannel, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DecryptChannel not implemented")
 }
-func (UnimplementedMessageServiceServer) FinishConversation(context.Context, *RequestFinishConversation) (*ResponseFinishConversation, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FinishConversation not implemented")
+func (UnimplementedMessageServiceServer) FinishChannel(context.Context, *RequestFinishChannel) (*ResponseFinishChannel, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FinishChannel not implemented")
 }
 func (UnimplementedMessageServiceServer) PushMessage(context.Context, *RequestPushMessage) (*ResponsePushMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushMessage not implemented")
@@ -138,8 +138,8 @@ func (UnimplementedMessageServiceServer) PushMessage(context.Context, *RequestPu
 func (UnimplementedMessageServiceServer) CreateBotMessage(context.Context, *RequestBotMessage) (*ResponseBotMessage, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateBotMessage not implemented")
 }
-func (UnimplementedMessageServiceServer) CreateConversation(context.Context, *RequestCreateConversation) (*ResponseCreateConversation, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateConversation not implemented")
+func (UnimplementedMessageServiceServer) CreateChannel(context.Context, *RequestCreateChannel) (*ResponseCreateChannel, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateChannel not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 
@@ -190,38 +190,38 @@ func _MessageService_ReadMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessageService_DecryptConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestDecryptConversation)
+func _MessageService_DecryptChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestDecryptChannel)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageServiceServer).DecryptConversation(ctx, in)
+		return srv.(MessageServiceServer).DecryptChannel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/message.MessageService/DecryptConversation",
+		FullMethod: "/message.MessageService/DecryptChannel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).DecryptConversation(ctx, req.(*RequestDecryptConversation))
+		return srv.(MessageServiceServer).DecryptChannel(ctx, req.(*RequestDecryptChannel))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessageService_FinishConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestFinishConversation)
+func _MessageService_FinishChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestFinishChannel)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageServiceServer).FinishConversation(ctx, in)
+		return srv.(MessageServiceServer).FinishChannel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/message.MessageService/FinishConversation",
+		FullMethod: "/message.MessageService/FinishChannel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).FinishConversation(ctx, req.(*RequestFinishConversation))
+		return srv.(MessageServiceServer).FinishChannel(ctx, req.(*RequestFinishChannel))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -262,20 +262,20 @@ func _MessageService_CreateBotMessage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessageService_CreateConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestCreateConversation)
+func _MessageService_CreateChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestCreateChannel)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageServiceServer).CreateConversation(ctx, in)
+		return srv.(MessageServiceServer).CreateChannel(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/message.MessageService/CreateConversation",
+		FullMethod: "/message.MessageService/CreateChannel",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).CreateConversation(ctx, req.(*RequestCreateConversation))
+		return srv.(MessageServiceServer).CreateChannel(ctx, req.(*RequestCreateChannel))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -296,12 +296,12 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_ReadMessage_Handler,
 		},
 		{
-			MethodName: "DecryptConversation",
-			Handler:    _MessageService_DecryptConversation_Handler,
+			MethodName: "DecryptChannel",
+			Handler:    _MessageService_DecryptChannel_Handler,
 		},
 		{
-			MethodName: "FinishConversation",
-			Handler:    _MessageService_FinishConversation_Handler,
+			MethodName: "FinishChannel",
+			Handler:    _MessageService_FinishChannel_Handler,
 		},
 		{
 			MethodName: "PushMessage",
@@ -312,8 +312,8 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_CreateBotMessage_Handler,
 		},
 		{
-			MethodName: "CreateConversation",
-			Handler:    _MessageService_CreateConversation_Handler,
+			MethodName: "CreateChannel",
+			Handler:    _MessageService_CreateChannel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

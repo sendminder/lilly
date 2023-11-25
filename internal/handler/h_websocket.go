@@ -103,11 +103,11 @@ func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
 	case "read_message":
 		HandleReadMessage(clientRequest.Payload)
 
-	case "decrypt_conversation":
-		HandleDecryptConversation(clientRequest.Payload)
+	case "decrypt_channel":
+		HandleDecryptChannel(clientRequest.Payload)
 
-	case "finish_conversation":
-		HandleFinishConversation(clientRequest.Payload)
+	case "finish_channel":
+		HandleFinishChannel(clientRequest.Payload)
 
 	case "register_role":
 		HandleRegisterRole(clientRequest.Payload)

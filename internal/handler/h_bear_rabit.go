@@ -36,7 +36,7 @@ func HandleRegisterRole(payload json.RawMessage) {
 func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	// TODO
 	// 1. check redis rabbit or bear
-	// 2. if exist create conversation
+	// 2. if exist create channel
 	// 2-a. 가져온 유저 세션 확인,
 	// 2-b. 나에게 붙어있으면 바로 created 전달, 다른파드면 relay 이벤트 요청
 	// 2-c. 요청자에게 created 이벤트 전달,
@@ -70,11 +70,11 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 		return nil
 	}
 
-	// create conversation
+	// create channel
 	joinedUsers := []int64{myUserId, targetUserId}
-	res, err := CreateConversation("BareRabbit", myUserId, joinedUsers)
+	res, err := CreateChannel("BareRabbit", myUserId, joinedUsers)
 	if err != nil {
-		log.Println("[Error] cant create conversation myUserId: ", myUserId)
+		log.Println("[Error] cant create channel myUserId: ", myUserId)
 		return err
 	}
 
@@ -82,18 +82,18 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	if targetLocation == config.LocalIP {
 		// relay local
 		payload := map[string]interface{}{
-			"conversation_id": res.ConversationId,
+			"channel_id": res.ChannelId,
 		}
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
 			// 오류 처리를 수행하거나 로깅합니다.
 			return err
 		}
-		relayEvent("created_conversation", joinedUsers, payloadBytes)
+		relayEvent("created_channel", joinedUsers, payloadBytes)
 		return nil
 	}
 
-	relayCreatedConversation(res.ConversationId, joinedUsers, targetLocation)
+	relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation)
 
 	return nil
 }
@@ -105,18 +105,18 @@ func readyToUser(myRole string, myUserId int64) {
 	log.Println("not found ready user, userId:", myUserId)
 }
 
-func relayCreatedConversation(convId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedConversation, error) {
-	payload := &relay.CreatedConversationPayload{
-		ConversationId: convId,
+func relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedChannel, error) {
+	payload := &relay.CreatedChannelPayload{
+		ChannelId: channelId,
 	}
-	reqCreatedConv := &relay.RequestRelayCreatedConversation{
-		Event:       "created_conversation",
+	reqCreatedChannel := &relay.RequestRelayCreatedChannel{
+		Event:       "created_channel",
 		Payload:     payload,
 		JoinedUsers: joinedUsers,
 	}
 
 	client := GetRelayClient(targetIP)
-	resp, err := client.RelayCreatedConversation(context.Background(), reqCreatedConv)
+	resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
 	if err != nil {
 		return nil, err
 	}

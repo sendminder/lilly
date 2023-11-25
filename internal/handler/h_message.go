@@ -27,7 +27,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 		return
 	}
 	// 받은 메시지를 출력합니다.
-	log.Printf("[ReqCreateMessage] convId: %d, text: %s\n", reqCreateMsg.ConversationId, reqCreateMsg.Text)
+	log.Printf("[ReqCreateMessage] channelId: %d, text: %s\n", reqCreateMsg.ChannelId, reqCreateMsg.Text)
 
 	// 메시지 생성 요청
 	resp, err := createMessage(reqCreateMsg)
@@ -61,11 +61,11 @@ func HandleCreateMessage(payload json.RawMessage) {
 	}
 
 	msg := &relay.Message{
-		Id:             resp.Message.Id,
-		ConversationId: reqCreateMsg.ConversationId,
-		Text:           reqCreateMsg.Text,
-		SenderId:       reqCreateMsg.SenderId,
-		Animal:         "cat",
+		Id:        resp.Message.Id,
+		ChannelId: reqCreateMsg.ChannelId,
+		Text:      reqCreateMsg.Text,
+		SenderId:  reqCreateMsg.SenderId,
+		Animal:    "cat",
 	}
 
 	for targetIP, users := range targetRelayMap {
@@ -104,7 +104,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 
 	broadcast <- broadcastEvent
 
-	if reqCreateMsg.ConversationType == "bot" {
+	if reqCreateMsg.ChannelType == "bot" {
 		_, err := createBotMessage(reqCreateMsg)
 		if err != nil {
 			log.Printf("Failed to create bot message: %v", err)
@@ -122,7 +122,7 @@ func HandleReadMessage(payload json.RawMessage) {
 	}
 
 	// 받은 메시지를 출력합니다.
-	log.Printf("[ReqReadMessage] convId: %d, messageId: %d\n", reqReadMsg.ConversationId, reqReadMsg.MessageId)
+	log.Printf("[ReqReadMessage] channelId: %d, messageId: %d\n", reqReadMsg.ChannelId, reqReadMsg.MessageId)
 	resp, err := readMessage(reqReadMsg)
 	if err != nil {
 		log.Printf("Failed to read message: %v", err)
@@ -136,10 +136,10 @@ func HandleReadMessage(payload json.RawMessage) {
 
 func createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
 	createMsg := &msg.RequestCreateMessage{
-		SenderId:         reqCreateMsg.SenderId,
-		ConversationId:   reqCreateMsg.ConversationId,
-		ConversationType: reqCreateMsg.ConversationType,
-		Text:             reqCreateMsg.Text,
+		SenderId:    reqCreateMsg.SenderId,
+		ChannelId:   reqCreateMsg.ChannelId,
+		ChannelType: reqCreateMsg.ChannelType,
+		Text:        reqCreateMsg.Text,
 	}
 
 	randIdx := rand.Intn(10)
@@ -163,9 +163,9 @@ func relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string) (*relay.
 
 func readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
 	readMsg := &msg.RequestReadMessage{
-		UserId:         reqReadMsg.UserId,
-		ConversationId: reqReadMsg.ConversationId,
-		MessageId:      reqReadMsg.MessageId,
+		UserId:    reqReadMsg.UserId,
+		ChannelId: reqReadMsg.ChannelId,
+		MessageId: reqReadMsg.MessageId,
 	}
 
 	randIdx := rand.Intn(10)
@@ -212,10 +212,10 @@ func pushMessage(req *msg.Message, receivers []int64) (*msg.ResponsePushMessage,
 
 func createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMessage, error) {
 	createBotMsg := &msg.RequestBotMessage{
-		SenderId:         reqCreateMsg.SenderId,
-		ConversationId:   reqCreateMsg.ConversationId,
-		ConversationType: reqCreateMsg.ConversationType,
-		Text:             reqCreateMsg.Text,
+		SenderId:    reqCreateMsg.SenderId,
+		ChannelId:   reqCreateMsg.ChannelId,
+		ChannelType: reqCreateMsg.ChannelType,
+		Text:        reqCreateMsg.Text,
 	}
 
 	randIdx := rand.Intn(10)
