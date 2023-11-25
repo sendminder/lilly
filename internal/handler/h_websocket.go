@@ -243,7 +243,7 @@ func createMessageConnection() {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(
 			keepalive.ClientParameters{
-				Time:                25 * time.Second,
+				Time:                3600 * time.Second,
 				Timeout:             3 * time.Second,
 				PermitWithoutStream: true,
 			},
