@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	gr "google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"lilly/internal/config"
 	"lilly/internal/handler/broadcast"
 	"lilly/internal/protocol"
@@ -61,7 +63,21 @@ func (s *relayServer) StartRelayServer(wg *sync.WaitGroup) {
 	if err != nil {
 		slog.Error("failed to listen", "error", err)
 	}
-	srv := gr.NewServer()
+	srv := gr.NewServer(
+		gr.KeepaliveParams(
+			keepalive.ServerParameters{
+				MaxConnectionAge:      24 * time.Hour,
+				MaxConnectionAgeGrace: 10 * time.Second,
+				Time:                  60 * time.Second,
+				Timeout:               10 * time.Second,
+			},
+		),
+		gr.KeepaliveEnforcementPolicy(
+			keepalive.EnforcementPolicy{
+				MinTime: 60 * time.Second,
+			},
+		),
+	)
 	relay.RegisterRelayServiceServer(srv, s)
 	slog.Info("gRPC server is listening on port", "relayPort", s.relayPort)
 	if err := srv.Serve(listener); err != nil {

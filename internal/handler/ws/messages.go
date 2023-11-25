@@ -83,26 +83,25 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 			Message:     msg,
 			JoinedUsers: users,
 		}
-		go func() {
-			// NOTE: relay 실패시 커넥트가 안된 상태라면 이미 내려간 릴레이서버로 간주하고 redis 정보를 지운다.
-			relayMessage := relayMsg
-			ip := targetIP
-			_, relayError := wv.relayMessage(relayMessage, ip, config.GetString("relay.port"))
-			if errors.Is(relayError, rc.ErrNotReady) || errors.Is(relayError, context.DeadlineExceeded) {
-				slog.Error("Failed to connect relay server", "error", relayError)
-				for _, userId := range relayMessage.JoinedUsers {
-					cacheError := cache.DeleteUserLocation(userId)
-					if cacheError != nil {
-						slog.Error("GetUserInfo err", "error", cacheError)
-					}
+
+		// NOTE: relay 실패시 커넥트가 안된 상태라면 이미 내려간 릴레이서버로 간주하고 redis 정보를 지운다.
+		// 그룹 대화방이 되면, go routine으로 돌릴 수 있음
+		_, relayError := wv.relayMessage(relayMsg, targetIP, config.GetString("relay.port"))
+		if errors.Is(relayError, rc.ErrNotReady) || errors.Is(relayError, context.DeadlineExceeded) {
+			slog.Error("Failed to connect relay server", "error", relayError)
+			for _, userId := range relayMsg.JoinedUsers {
+				cacheError := cache.DeleteUserLocation(userId)
+				notFoundUsers = append(notFoundUsers, userId)
+				if cacheError != nil {
+					slog.Error("GetUserInfo err", "error", cacheError)
 				}
-				return
-			} else if relayError != nil {
-				slog.Error("Failed to relay message", "error", relayError)
-				return
 			}
-			slog.Info("Relayed Message", "relayMsg", relayMsg)
-		}()
+			continue
+		} else if relayError != nil {
+			slog.Error("Failed to relay message", "error", relayError)
+			continue
+		}
+		slog.Info("Relayed Message", "relayMsg", relayMsg)
 	}
 
 	if len(notFoundUsers) > 0 {
