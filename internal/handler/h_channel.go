@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"math/rand"
 
 	"lilly/internal/protocol"
@@ -14,17 +14,17 @@ func HandleDecryptChannel(payload json.RawMessage) {
 	var reqDecryptChannel protocol.DecryptChannel
 	err := json.Unmarshal(payload, &reqDecryptChannel)
 	if err != nil {
-		log.Println("Json Error:", err)
+		slog.Error("Json Error", "error", err)
 		return
 	}
 	// 받은 메시지를 출력
-	log.Printf("[ReqDecryptChannel] channelId: %d\n", reqDecryptChannel.ChannelId)
+	slog.Info("[ReqDecryptChannel]", "channelId", reqDecryptChannel.ChannelId)
 	resp, err := decryptChannel(reqDecryptChannel)
 	if err != nil {
-		log.Printf("Failed to decrypt channel: %v", err)
+		slog.Error("Failed to decrypt channel", "error", err)
 		return
 	}
-	log.Printf("Decrypted Channel: %v\n", resp)
+	slog.Info("Decrypted Channel", "resp", resp)
 
 	// TODO: decrypted_channel relay
 	// decrypted_channel 받으면, 클라에서 복호화 하기
@@ -34,17 +34,17 @@ func HandleFinishChannel(payload json.RawMessage) {
 	var reqFinishChannel protocol.FinishChannel
 	err := json.Unmarshal(payload, &reqFinishChannel)
 	if err != nil {
-		log.Println("Json Error:", err)
+		slog.Error("Json Error", "error", err)
 		return
 	}
 
-	log.Printf("[ReqFinishChannel] channelId: %d\n", reqFinishChannel.ChannelId)
+	slog.Info("[ReqFinishChannel]", "channelId", reqFinishChannel.ChannelId)
 	resp, err := finishChannel(reqFinishChannel)
 	if err != nil {
-		log.Printf("Failed to finish channel: %v", err)
+		slog.Error("Failed to finish channel", "error", err)
 		return
 	}
-	log.Printf("Finished Channel: %v\n", resp)
+	slog.Info("Finished Channel", "resp", resp)
 
 	// TODO: finish_channel relay
 	// finish_channel 받으면, 클라에서 deactivated 처리

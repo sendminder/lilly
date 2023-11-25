@@ -28,7 +28,7 @@ func run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go handler.StartRelayServer(&wg)
-	go handler.StartWebSocketServer(&wg)
+	go handler.StartWebSocketServer(&wg, config.GetInt("websocket.port"))
 
 	wg.Wait()
 

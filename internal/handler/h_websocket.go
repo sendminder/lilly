@@ -2,8 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"sync"
@@ -50,7 +49,7 @@ var (
 func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Error upgrading connection:", err)
+		slog.Error("Error upgrading connection", "error", err)
 		return
 	}
 	defer conn.Close()
@@ -60,7 +59,6 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte),
 	}
 	newClient.userId = getClientUserId(r)
-	log.Println("connection:", newClient)
 
 	register <- newClient
 	defer func() {
@@ -68,19 +66,19 @@ func handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	log.Printf("Client connected. u=%d s=%s\n", newClient.userId, config.LocalIP)
+	slog.Info("Client connected", "userId", newClient.userId, "localIP", config.LocalIP)
 
 	go newClient.writePump()
 
 	for {
 		// 클라이언트로부터 메시지를 읽습니다.
-		messageType, message, err := conn.ReadMessage()
+		messageType, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Error reading message:", err, messageType)
+			slog.Error("Error reading message", "err", err, "msgType", messageType)
 			break
 		}
 
-		handleWebSocketMessage(conn, message)
+		handleWebSocketMessage(conn, msg)
 	}
 }
 
@@ -92,7 +90,7 @@ func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
 
 	jsonErr := json.Unmarshal(message, &clientRequest)
 	if jsonErr != nil {
-		log.Println("Json Error: ", jsonErr)
+		slog.Error("Json Error", "error", jsonErr)
 		return
 	}
 
@@ -113,24 +111,27 @@ func handleWebSocketMessage(conn *websocket.Conn, message []byte) {
 		HandleRegisterRole(clientRequest.Payload)
 
 	default:
-		log.Println("Unknown event:", clientRequest.Event)
+		slog.Error("Unknown event", "event", clientRequest.Event)
 	}
 }
 
 func (c *client) writePump() {
 	for {
 		select {
-		case message, ok := <-c.send:
+		case msg, ok := <-c.send:
 			if !ok {
 				// 채널이 닫힌 경우
-				log.Println("Error acquired")
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				slog.Error("Error acquired")
+				err := c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err != nil {
+					return
+				}
 				return
 			}
 
 			// 클라이언트로 메시지를 보냅니다.
-			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Println("Error writing message:", err)
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				slog.Error("Error writing message", "error", err)
 				return
 			}
 		}
@@ -155,7 +156,7 @@ func handleMessages() {
 					// JSON 마샬링
 					jsonData, err := json.Marshal(data)
 					if err != nil {
-						fmt.Println("Failed to marshal JSON:", err)
+						slog.Error("Failed to marshal Json", "error", err)
 						return
 					}
 
@@ -163,7 +164,7 @@ func handleMessages() {
 					case client.send <- jsonData:
 					default:
 						// 보내기 실패한 경우 클라이언트를 제거합니다.
-						log.Println("broadcast Error acquired")
+						slog.Error("broadcast Error acquired")
 						close(client.send)
 						activeClients.delete(joinedUserId)
 					}
@@ -172,17 +173,23 @@ func handleMessages() {
 			}
 		case client := <-register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
-			err := cache.SetUserLocation(client.userId, config.LocalIP)
+			location := config.LocalIP + ":" + strconv.Itoa(config.WebSocketPort)
+			err := cache.SetUserLocation(client.userId, location)
 			if err != nil {
-				log.Println("register error", err)
+				slog.Error("register error", "error", err)
+				close(client.send)
+				activeClients.delete(client.userId)
 			} else {
-				log.Println("registered")
+				slog.Info("registered", "userId", client.userId, "location", location)
+				activeClients[client.userId] = client
 			}
-			activeClients[client.userId] = client
 		case client := <-unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
-			cache.DeleteUserLocation(client.userId)
-			log.Println("unregistered")
+			err := cache.DeleteUserLocation(client.userId)
+			if err != nil {
+				slog.Error("unregister error", "error", err)
+			}
+			slog.Info("unregistered", "userId", client.userId)
 			if _, ok := activeClients[client.userId]; ok {
 				close(client.send)
 				activeClients.delete(client.userId)
@@ -212,26 +219,26 @@ func getClientUserId(r *http.Request) int64 {
 	userId := r.URL.Query().Get("user_id")
 	num, err := strconv.ParseInt(userId, 10, 64)
 	if err != nil {
-		log.Println("error: ", err)
+		slog.Error("getClientUserId ParseInt error", "error", err)
 		return -1
 	}
 	return num
 }
 
-func StartWebSocketServer(wg *sync.WaitGroup) {
+func StartWebSocketServer(wg *sync.WaitGroup, port int) {
 	defer wg.Done()
 	createMessageConnection()
 
 	http.HandleFunc("/", handleWebSocketConnection)
 
 	// 웹소켓 핸들러를 등록하고 서버를 8080 포트에서 실행합니다.
-	log.Println("WebSocket server listening on :8080")
+	slog.Info("WebSocket server listening on" + strconv.Itoa(port))
 
 	go handleMessages()
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
 	if err != nil {
-		log.Fatal("Error starting WebSocket server:", err)
+		slog.Error("Error starting WebSocket server", "error", err)
 	}
 }
 
@@ -249,10 +256,10 @@ func createMessageConnection() {
 			},
 		))
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		slog.Error("failed to connect grpc", "error", err)
 	}
 	for i := 0; i < 10; i++ {
 		messageClient[i] = message.NewMessageServiceClient(messageConn)
-		log.Printf("mocha (%s:%s) client connection %d\n", mochaIP, mochaPort, i)
+		slog.Info("mocha client connection", "mocha", mochaIP+mochaPort+"["+strconv.Itoa(i)+"]")
 	}
 }

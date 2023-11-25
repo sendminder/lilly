@@ -1,34 +1,40 @@
 package config
 
 import (
-	"log"
+	"log/slog"
 	"net"
 
 	"github.com/spf13/viper"
 )
 
 var LocalIP string
+var WebSocketPort int
 
 func Init() {
 	loadConfig()
 	LocalIP = getLocalIP()
-	if LocalIP == "" {
-		log.Fatalln("Can not find IP")
+	WebSocketPort = GetInt("websocket.port")
+	if LocalIP == "" || WebSocketPort == 0 {
+		slog.Error("Can not find IP or Port")
 	}
-	log.Println("LocalIP =", LocalIP)
+	slog.Info("Config Init", "LocalIP", LocalIP, "WebSocketPort", WebSocketPort)
 }
 
 func loadConfig() {
-	log.Println("Config Loaded")
+	slog.Info("Config Loaded")
 	viper.SetConfigFile("config.yaml")
 	if err := viper.ReadInConfig(); err != nil {
-		log.Println("Failed to read config file:", err)
+		slog.Error("Failed to read config file", "error", err)
 		return
 	}
 }
 
 func GetString(key string) string {
 	return viper.GetString(key)
+}
+
+func GetInt(key string) int {
+	return viper.GetInt(key)
 }
 
 func getLocalIP() string {

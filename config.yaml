@@ -7,4 +7,5 @@ redis:
   ip: "localhost"
   port: "26380"
   password: ""
- 
+websocket:
+  port: 8080

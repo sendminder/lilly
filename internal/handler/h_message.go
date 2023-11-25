@@ -3,8 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
+	"log/slog"
 	"math/rand"
 
 	"lilly/internal/cache"
@@ -18,24 +17,24 @@ func HandleCreateMessage(payload json.RawMessage) {
 	var reqCreateMsg protocol.CreateMessage
 	err := json.Unmarshal(payload, &reqCreateMsg)
 	if err != nil {
-		log.Println("Json Error:", err)
+		slog.Error("Json Error", "error", err)
 		return
 	}
 
 	if reqCreateMsg.Text == "" {
-		log.Println("HandleCreateMessage Error: Text is empty")
+		slog.Error("HandleCreateMessage Error: Text is empty")
 		return
 	}
 	// 받은 메시지를 출력합니다.
-	log.Printf("[ReqCreateMessage] channelId: %d, text: %s\n", reqCreateMsg.ChannelId, reqCreateMsg.Text)
+	slog.Info("[ReqCreateMessage]", "channelId", reqCreateMsg.ChannelId, "text", reqCreateMsg.Text)
 
 	// 메시지 생성 요청
 	resp, err := createMessage(reqCreateMsg)
 	if err != nil {
-		log.Printf("Failed to create message: %v", err)
+		slog.Error("Failed to create message", "error", err)
 		return
 	}
-	log.Printf("Created Message: %v\n", resp)
+	slog.Info("Created Message", "resp", resp)
 
 	/*
 		1. joined_users 중 현재 local에 있는 유저에게 릴레이
@@ -46,7 +45,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	*/
 	userInfos, err := cache.GetUserLocations(resp.JoinedUsers)
 	if err != nil {
-		log.Println("GetUserInfo err", err)
+		slog.Error("GetUserInfo err", "error", err)
 	}
 	targetRelayMap := make(map[string][]int64)
 	notFoundUsers := make([]int64, 0)
@@ -55,7 +54,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 			notFoundUsers = append(notFoundUsers, userId)
 			continue
 		}
-		if location != config.LocalIP {
+		if location != config.LocalIP+":"+config.GetString("websocket.port") {
 			targetRelayMap[location] = append(targetRelayMap[location], userId)
 		}
 	}
@@ -68,7 +67,8 @@ func HandleCreateMessage(payload json.RawMessage) {
 		Animal:    "cat",
 	}
 
-	for targetIP, users := range targetRelayMap {
+	for targetLocation, users := range targetRelayMap {
+		targetIP := targetLocation[:len(targetLocation)-len(config.GetString("websocket.port"))-1]
 		// 메시지 릴레이
 		if len(users) == 0 {
 			continue
@@ -77,22 +77,25 @@ func HandleCreateMessage(payload json.RawMessage) {
 			Message:     msg,
 			JoinedUsers: users,
 		}
-		resp2, err2 := relayMessage(relayMsg, targetIP)
+		_, err2 := relayMessage(relayMsg, targetIP)
 		if err2 != nil {
-			log.Printf("Failed to relay message: %v", err2)
+			slog.Error("Failed to relay message", "error", err2)
 			return
 		}
-		log.Printf("Relayed Message: %v\n", resp2)
+		slog.Info("Relayed Message", "relayMsg", relayMsg)
 	}
 
 	if len(notFoundUsers) > 0 {
-		log.Printf("PushMessage to Not Found Users: %v\n", notFoundUsers)
-		pushMessage(resp.Message, notFoundUsers)
+		slog.Info("PushMessage to", "notFoundUsers", notFoundUsers)
+		_, err := pushMessage(resp.Message, notFoundUsers)
+		if err != nil {
+			slog.Error("Failed to push message", "error", err)
+		}
 	}
 
 	jsonData, err := createJsonData("message", resp.Message)
 	if err != nil {
-		fmt.Println("Failed to marshal JSON:", err)
+		slog.Error("Failed to marshal Json", "error", err)
 		return
 	}
 
@@ -107,7 +110,7 @@ func HandleCreateMessage(payload json.RawMessage) {
 	if reqCreateMsg.ChannelType == "bot" {
 		_, err := createBotMessage(reqCreateMsg)
 		if err != nil {
-			log.Printf("Failed to create bot message: %v", err)
+			slog.Error("Failed to create bot message", "error", err)
 			return
 		}
 	}
@@ -117,18 +120,18 @@ func HandleReadMessage(payload json.RawMessage) {
 	var reqReadMsg protocol.ReadMessage
 	jsonErr := json.Unmarshal(payload, &reqReadMsg)
 	if jsonErr != nil {
-		log.Println("Json Error: ", jsonErr)
+		slog.Error("Json Error", "error", jsonErr)
 		return
 	}
 
 	// 받은 메시지를 출력합니다.
-	log.Printf("[ReqReadMessage] channelId: %d, messageId: %d\n", reqReadMsg.ChannelId, reqReadMsg.MessageId)
+	slog.Info("[ReqReadMessage]", "channelId", reqReadMsg.ChannelId, "messageId", reqReadMsg.MessageId)
 	resp, err := readMessage(reqReadMsg)
 	if err != nil {
-		log.Printf("Failed to read message: %v", err)
+		slog.Error("Failed to read message", "error", err)
 		return
 	}
-	log.Printf("Readed Message: %v\n", resp)
+	slog.Info("Readed Message", "resp", resp)
 
 	// TODO: read_message relay
 	// read_message 릴레이하면, 클라에서 안읽은 유저수 카운트 처리할수있나?

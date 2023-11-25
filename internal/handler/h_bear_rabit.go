@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 
 	"lilly/internal/cache"
 	"lilly/internal/config"
@@ -21,14 +21,14 @@ func HandleRegisterRole(payload json.RawMessage) {
 	var reqRegisterRole protocol2.RegisterRole
 	jsonErr := json.Unmarshal(payload, &reqRegisterRole)
 	if jsonErr != nil {
-		log.Println("Json Error: ", jsonErr)
+		slog.Error("Json Error", "error", jsonErr)
 		return
 	}
 
-	log.Printf("[ReqRegisterRole] UserId: %d, RoleType: %s\n", reqRegisterRole.UserId, reqRegisterRole.RoleType)
+	slog.Info("[ReqRegisterRole]", "userId", reqRegisterRole.UserId, "roleType", reqRegisterRole.RoleType)
 	err := registerRole(reqRegisterRole)
 	if err != nil {
-		log.Printf("Failed to read message: %v", err)
+		slog.Error("Failed to read message", "error", err)
 		return
 	}
 }
@@ -74,7 +74,7 @@ func registerRole(reqRegisterRole protocol2.RegisterRole) error {
 	joinedUsers := []int64{myUserId, targetUserId}
 	res, err := CreateChannel("BareRabbit", myUserId, joinedUsers)
 	if err != nil {
-		log.Println("[Error] cant create channel myUserId: ", myUserId)
+		slog.Error("[Error] cant create channel", "myUserId", myUserId)
 		return err
 	}
 
@@ -102,7 +102,7 @@ func readyToUser(myRole string, myUserId int64) {
 	cache.EnqueueReadyUser(myRole, myUserId)
 	// send event "ready"
 	relayEvent("ready", []int64{myUserId}, []byte{})
-	log.Println("not found ready user, userId:", myUserId)
+	slog.Info("not found ready user", "userId", myUserId)
 }
 
 func relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedChannel, error) {

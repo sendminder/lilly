@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"math/rand"
 	"net"
 	"sync"
@@ -21,11 +21,11 @@ type relayServer struct {
 }
 
 func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
-	log.Println("RelayMessage : text=", req.Message.Text)
+	slog.Info("RelayMessage", "text", req.Message.Text)
 
 	jsonData, err := createJsonData("message", req.Message)
 	if err != nil {
-		log.Println("Failed to marshal JSON:", err)
+		slog.Error("Failed to marshal Json", "error", err)
 		return nil, err
 	}
 
@@ -52,13 +52,13 @@ func StartRelayServer(wg *sync.WaitGroup) {
 	relayPort = config.GetString("relay.port")
 	listener, err := net.Listen("tcp", ":"+relayPort)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		slog.Error("failed to listen", "error", err)
 	}
 	srv := grpc.NewServer()
 	relay.RegisterRelayServiceServer(srv, &relayServer{})
-	log.Printf("gRPC server is listening on port %s...\n", relayPort)
+	slog.Info("gRPC server is listening on port", "relayPort", relayPort)
 	if err := srv.Serve(listener); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		slog.Error("failed to serve", "error", err)
 	}
 }
 
@@ -84,13 +84,13 @@ func createRelayClient(target string) {
 			},
 		))
 	if err != nil {
-		log.Fatalf("failed to connect: %v", err)
+		slog.Error("failed to connect", "error", err)
 	}
 
 	relayClients[target] = make([]relay.RelayServiceClient, 10)
 	for i := 0; i < 10; i++ {
 		relayClients[target][i] = relay.NewRelayServiceClient(relayConn)
-		log.Println("relay client connection", i)
+		slog.Info("relay client connection", "i", i)
 	}
 }
 

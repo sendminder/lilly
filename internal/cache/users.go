@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/go-redis/redis/v8"
 	"lilly/internal/config"
@@ -23,11 +23,11 @@ func CreateRedisConnection() {
 	})
 
 	// 연결 확인
-	pong, err := RedisClient.Ping(context.Background()).Result()
+	_, err := RedisClient.Ping(context.Background()).Result()
 	if err != nil {
-		log.Fatal("Failed to connect to Redis:", err)
+		slog.Error("Failed to connect to Redis", "error", err)
 	}
-	fmt.Println("Connected to Redis:", pong)
+	slog.Info("Connected to Redis")
 }
 
 func SetUserLocation(userID int64, location string) error {
@@ -83,10 +83,10 @@ func EnqueueReadyUser(roleType string, userId int64) bool {
 	key := "queue" + roleType
 	_, err := RedisClient.LPush(context.Background(), key, userId).Result()
 	if err != nil {
-		log.Println("Error enqueuing user:", err)
+		slog.Error("Error enqueuing user", "error", err)
 		return false
 	}
-	log.Printf("[EnqueueReadyUser] key=%s, userId=%d", key, userId)
+	slog.Info("[EnqueueReadyUser]", "key", key, "userId", userId)
 	return true
 }
 
@@ -94,9 +94,9 @@ func DequeueReadyUser(roleType string) (int64, error) {
 	key := "queue" + roleType
 	userId, err := RedisClient.RPop(context.Background(), key).Int64()
 	if err != nil && err != redis.Nil {
-		fmt.Println("Error dequeuing user:", err)
+		slog.Error("Error dequeuing user", "error", err)
 		return 0, err
 	}
-	log.Printf("[DequeueReadyUser] key=%s, userId=%d", key, userId)
+	slog.Info("[DequeueReadyUser]", "key", key, "userId", userId)
 	return userId, nil
 }
