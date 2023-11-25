@@ -1,6 +1,6 @@
 module lilly
 
-go 1.20
+go 1.21
 
 require (
 	github.com/daixiang0/gci v0.11.2

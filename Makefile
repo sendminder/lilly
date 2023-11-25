@@ -36,7 +36,7 @@ format: format-go
 .PHONY: test
 ## test: runs tests
 test: install-tools
-	gotest -p 1 -race -cover -v ./pkg/... ./internal/...
+	gotest -p 1 -race -cover -v ./internal/...
 
 .PHONY: unit-test
 ## unit-test: runs unit tests
