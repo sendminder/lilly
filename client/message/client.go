@@ -52,7 +52,7 @@ func (mc *messageClient) CreateMessageConnection() {
 			},
 		))
 	if err != nil {
-		slog.Error("failed to connect grpc", "error", err)
+		slog.Error("failed to connect relay", "error", err)
 	}
 	for i := 0; i < mc.numClients; i++ {
 		mc.clients[i] = message.NewMessageServiceClient(messageConn)

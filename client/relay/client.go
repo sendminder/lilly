@@ -12,7 +12,7 @@ import (
 )
 
 type Client interface {
-	getRelayClient(target string, port string) relay.RelayServiceClient
+	GetRelayClient(target string, port string) relay.RelayServiceClient
 }
 
 var _ Client = (*relayClient)(nil)
@@ -30,10 +30,8 @@ func NewRelayClient() Client {
 	}
 }
 
-func (rc *relayClient) getRelayClient(target string, port string) relay.RelayServiceClient {
+func (rc *relayClient) GetRelayClient(target string, port string) relay.RelayServiceClient {
 	randIdx := rand.Intn(10)
-	// mutexes[randIdx].Lock()
-	// mutexes[randIdx].Unlock()
 	if !rc.rcm.contains(target) {
 		rc.createRelayClient(target, port)
 	}

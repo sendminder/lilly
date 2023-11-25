@@ -1,7 +1,9 @@
-package grpc
+package relay
 
 import (
 	"context"
+	"lilly/internal/handler/broadcast"
+	"lilly/internal/protocol"
 	"log/slog"
 	"net"
 	"sync"
@@ -12,42 +14,43 @@ import (
 	"lilly/proto/relay"
 )
 
-type RelayServer interface {
+type Server interface {
 	StartRelayServer(wg *sync.WaitGroup)
 	RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error)
 }
 
-var _ RelayServer = (*relayServer)(nil)
+var _ Server = (*relayServer)(nil)
 
 type relayServer struct {
 	relay.UnimplementedRelayServiceServer
-	relayPort string
+	relayPort   string
+	broadcaster broadcast.Broadcaster
 }
 
-func NewRelayServer() RelayServer {
+func NewRelayServer(broadcaster broadcast.Broadcaster) Server {
 	relayPort := config.GetString("relay.port")
 	return &relayServer{
-		relayPort: relayPort,
+		relayPort:   relayPort,
+		broadcaster: broadcaster,
 	}
 }
 
 func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
 	slog.Info("RelayMessage", "text", req.Message.Text)
 
-	_, err := util.CreateJsonData("message", req.Message)
+	jsonData, err := util.CreateJsonData("message", req.Message)
 	if err != nil {
 		slog.Error("Failed to marshal Json", "error", err)
 		return nil, err
 	}
 
-	//broadcastEvent := protocol.BroadcastEvent{
-	//	Event:       "message",
-	//	Payload:     jsonData,
-	//	JoinedUsers: req.JoinedUsers,
-	//}
+	broadcastEvent := protocol.BroadcastEvent{
+		Event:       "message",
+		Payload:     jsonData,
+		JoinedUsers: req.JoinedUsers,
+	}
 
-	// TODO: broadcast 어케하냐..
-	// broadcast <- broadcastEvent
+	s.broadcaster.Broadcast <- broadcastEvent
 
 	return &relay.ResponseRelayMessage{}, nil
 }

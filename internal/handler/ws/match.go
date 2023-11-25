@@ -1,13 +1,14 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 
 	"lilly/internal/cache"
 	"lilly/internal/config"
-	protocol2 "lilly/internal/protocol"
+	"lilly/internal/protocol"
 	"lilly/proto/relay"
 )
 
@@ -21,7 +22,7 @@ type MatchHandler interface {
 }
 
 func (wv *webSocketServer) handleRegisterRole(payload json.RawMessage) {
-	var reqRegisterRole protocol2.RegisterRole
+	var reqRegisterRole protocol.RegisterRole
 	jsonErr := json.Unmarshal(payload, &reqRegisterRole)
 	if jsonErr != nil {
 		slog.Error("Json Error", "error", jsonErr)
@@ -36,7 +37,7 @@ func (wv *webSocketServer) handleRegisterRole(payload json.RawMessage) {
 	}
 }
 
-func (wv *webSocketServer) registerRole(reqRegisterRole protocol2.RegisterRole) error {
+func (wv *webSocketServer) registerRole(reqRegisterRole protocol.RegisterRole) error {
 	// TODO
 	// 1. check redis rabbit or bear
 	// 2. if exist create channel
@@ -96,7 +97,7 @@ func (wv *webSocketServer) registerRole(reqRegisterRole protocol2.RegisterRole) 
 		return nil
 	}
 
-	wv.relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation)
+	wv.relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation, "50051")
 
 	return nil
 }
@@ -108,31 +109,30 @@ func (wv *webSocketServer) readyToUser(myRole string, myUserId int64) {
 	slog.Info("not found ready user", "userId", myUserId)
 }
 
-func (wv *webSocketServer) relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string) (*relay.ResponseRelayCreatedChannel, error) {
-	//payload := &relay.CreatedChannelPayload{
-	//	ChannelId: channelId,
-	//}
-	//reqCreatedChannel := &relay.RequestRelayCreatedChannel{
-	//	Event:       "created_channel",
-	//	Payload:     payload,
-	//	JoinedUsers: joinedUsers,
-	//}
+func (wv *webSocketServer) relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string, targetPort string) (*relay.ResponseRelayCreatedChannel, error) {
+	payload := &relay.CreatedChannelPayload{
+		ChannelId: channelId,
+	}
+	reqCreatedChannel := &relay.RequestRelayCreatedChannel{
+		Event:       "created_channel",
+		Payload:     payload,
+		JoinedUsers: joinedUsers,
+	}
 
-	//client := grpc.GetRelayClient(targetIP)
-	//resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return resp, nil
-	return nil, nil
+	client := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (wv *webSocketServer) relayEvent(eventName string, relayLocalUsers []int64, payload []byte) {
-	broadcastEvent := protocol2.BroadcastEvent{
+	broadcastEvent := protocol.BroadcastEvent{
 		Event:       eventName,
 		Payload:     payload,
 		JoinedUsers: relayLocalUsers,
 	}
 
-	wv.broadcast <- broadcastEvent
+	wv.broadcaster.Broadcast <- broadcastEvent
 }

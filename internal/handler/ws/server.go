@@ -2,6 +2,8 @@ package ws
 
 import (
 	"encoding/json"
+	"lilly/internal/handler/broadcast"
+	"lilly/internal/handler/socket"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -12,7 +14,6 @@ import (
 	"lilly/client/relay"
 	"lilly/internal/cache"
 	"lilly/internal/config"
-	"lilly/internal/protocol"
 	"lilly/internal/util"
 )
 
@@ -26,32 +27,21 @@ type WebSocketServer interface {
 
 var _ WebSocketServer = (*webSocketServer)(nil)
 
-type client struct {
-	conn   *websocket.Conn
-	send   chan []byte
-	userId int64
-}
-
-type clientMap map[int64]*client
+type clientMap map[int64]*socket.Socket
 
 type webSocketServer struct {
 	activeClients clientMap
-	broadcast     chan protocol.BroadcastEvent
-	register      chan *client
-	unregister    chan *client
+	broadcaster   broadcast.Broadcaster
 	clientLock    []sync.Mutex
-	upgrader      websocket.Upgrader
+	upgrade       websocket.Upgrader
 	relayClient   relay.Client
 	messageClient message.Client
 }
 
-func NewWebSocketServer(relayClient relay.Client, messageClient message.Client) WebSocketServer {
+func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Client, messageClient message.Client) WebSocketServer {
 	activeClients := make(clientMap)
-	broadcast := make(chan protocol.BroadcastEvent)
-	register := make(chan *client)
-	unregister := make(chan *client)
 	clientLock := make([]sync.Mutex, 10)
-	upgrader := websocket.Upgrader{
+	upgrade := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
@@ -61,11 +51,9 @@ func NewWebSocketServer(relayClient relay.Client, messageClient message.Client) 
 	}
 	return &webSocketServer{
 		activeClients: activeClients,
-		broadcast:     broadcast,
-		register:      register,
-		unregister:    unregister,
+		broadcaster:   broadcaster,
 		clientLock:    clientLock,
-		upgrader:      upgrader,
+		upgrade:       upgrade,
 		relayClient:   relayClient,
 		messageClient: messageClient,
 	}
@@ -78,7 +66,7 @@ func (wv *webSocketServer) StartWebSocketServer(wg *sync.WaitGroup, port int) {
 	http.HandleFunc("/", wv.handleWebSocketConnection)
 
 	// 웹소켓 핸들러를 등록하고 서버를 8080 포트에서 실행합니다.
-	slog.Info("WebSocket server listening on" + strconv.Itoa(port))
+	slog.Info("WebSocket server listening on", "port", strconv.Itoa(port))
 
 	go wv.handleMessages()
 
@@ -89,28 +77,28 @@ func (wv *webSocketServer) StartWebSocketServer(wg *sync.WaitGroup, port int) {
 }
 
 func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *http.Request) {
-	conn, err := wv.upgrader.Upgrade(w, r, nil)
+	conn, err := wv.upgrade.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("Error upgrading connection", "error", err)
 		return
 	}
 	defer conn.Close()
 
-	newClient := &client{
-		conn: conn,
-		send: make(chan []byte),
+	newClient := &socket.Socket{
+		Conn: conn,
+		Send: make(chan []byte),
 	}
-	newClient.userId = util.GetClientUserId(r)
+	newClient.UserId = util.GetClientUserId(r)
 
-	wv.register <- newClient
+	wv.broadcaster.Register <- newClient
 	defer func() {
-		wv.unregister <- newClient
+		wv.broadcaster.Unregister <- newClient
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	slog.Info("Client connected", "userId", newClient.userId, "localIP", config.LocalIP)
+	slog.Info("Client connected", "userId", newClient.UserId, "localIP", config.LocalIP)
 
-	go newClient.writePump()
+	go newClient.WritePump()
 
 	for {
 		// 클라이언트로부터 메시지를 읽습니다.
@@ -157,33 +145,10 @@ func (wv *webSocketServer) handleWebSocketMessage(conn *websocket.Conn, message 
 	}
 }
 
-func (c *client) writePump() {
-	for {
-		select {
-		case msg, ok := <-c.send:
-			if !ok {
-				// 채널이 닫힌 경우
-				slog.Error("Error acquired")
-				err := c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				if err != nil {
-					return
-				}
-				return
-			}
-
-			// 클라이언트로 메시지를 보냅니다.
-			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				slog.Error("Error writing message", "error", err)
-				return
-			}
-		}
-	}
-}
-
 func (wv *webSocketServer) handleMessages() {
 	for {
 		select {
-		case msg := <-wv.broadcast:
+		case msg := <-wv.broadcaster.Broadcast:
 			// 메시지를 받아서 모든 클라이언트에게 보냅니다.
 			for _, joinedUserId := range msg.JoinedUsers {
 				wv.clientLock[joinedUserId%10].Lock()
@@ -203,38 +168,38 @@ func (wv *webSocketServer) handleMessages() {
 					}
 
 					select {
-					case client.send <- jsonData:
+					case client.Send <- jsonData:
 					default:
 						// 보내기 실패한 경우 클라이언트를 제거합니다.
 						slog.Error("broadcast Error acquired")
-						close(client.send)
+						close(client.Send)
 						wv.activeClients.delete(joinedUserId)
 					}
 				}
 				wv.clientLock[joinedUserId%10].Unlock()
 			}
-		case client := <-wv.register:
+		case newSocket := <-wv.broadcaster.Register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
 			location := config.LocalIP + ":" + strconv.Itoa(config.WebSocketPort)
-			err := cache.SetUserLocation(client.userId, location)
+			err := cache.SetUserLocation(newSocket.UserId, location)
 			if err != nil {
 				slog.Error("register error", "error", err)
-				close(client.send)
-				wv.activeClients.delete(client.userId)
+				close(newSocket.Send)
+				wv.activeClients.delete(newSocket.UserId)
 			} else {
-				slog.Info("registered", "userId", client.userId, "location", location)
-				wv.activeClients[client.userId] = client
+				slog.Info("registered", "userId", newSocket.UserId, "location", location)
+				wv.activeClients[newSocket.UserId] = newSocket
 			}
-		case client := <-wv.unregister:
+		case closeSocket := <-wv.broadcaster.Unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
-			err := cache.DeleteUserLocation(client.userId)
+			err := cache.DeleteUserLocation(closeSocket.UserId)
 			if err != nil {
 				slog.Error("unregister error", "error", err)
 			}
-			slog.Info("unregistered", "userId", client.userId)
-			if _, ok := wv.activeClients[client.userId]; ok {
-				close(client.send)
-				wv.activeClients.delete(client.userId)
+			slog.Info("unregistered", "userId", closeSocket.UserId)
+			if _, ok := wv.activeClients[closeSocket.UserId]; ok {
+				close(closeSocket.Send)
+				wv.activeClients.delete(closeSocket.UserId)
 			}
 		}
 	}

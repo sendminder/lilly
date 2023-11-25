@@ -59,7 +59,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 			notFoundUsers = append(notFoundUsers, userId)
 			continue
 		}
-		if location != config.LocalIP+":"+config.GetString("ws.port") {
+		if location != config.LocalIP+":"+config.GetString("websocket.port") {
 			targetRelayMap[location] = append(targetRelayMap[location], userId)
 		}
 	}
@@ -73,8 +73,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 	}
 
 	for targetLocation, users := range targetRelayMap {
-		targetIP := targetLocation[:len(targetLocation)-len(config.GetString("ws.port"))-1]
-		// 메시지 릴레이
+		targetIP := targetLocation[:len(targetLocation)-len(config.GetString("websocket.port"))-1]
 		if len(users) == 0 {
 			continue
 		}
@@ -82,7 +81,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 			Message:     msg,
 			JoinedUsers: users,
 		}
-		_, err2 := relayMessage(relayMsg, targetIP)
+		_, err2 := wv.relayMessage(relayMsg, targetIP, config.GetString("relay.port"))
 		if err2 != nil {
 			slog.Error("Failed to relay message", "error", err2)
 			return
@@ -110,7 +109,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		JoinedUsers: resp.JoinedUsers,
 	}
 
-	wv.broadcast <- broadcastEvent
+	wv.broadcaster.Broadcast <- broadcastEvent
 
 	if reqCreateMsg.ChannelType == "bot" {
 		_, err := wv.createBotMessage(reqCreateMsg)
@@ -157,14 +156,13 @@ func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*
 	return resp, nil
 }
 
-func relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string) (*relay.ResponseRelayMessage, error) {
-	//client := grpc.GetRelayClient(targetIP)
-	//resp, err := client.RelayMessage(context.Background(), relayMsg)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return resp, nil
-	return nil, nil
+func (wv *webSocketServer) relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string, targetPort string) (*relay.ResponseRelayMessage, error) {
+	rc := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	resp, err := rc.RelayMessage(context.Background(), relayMsg)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (wv *webSocketServer) readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
