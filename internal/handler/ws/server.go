@@ -2,8 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"lilly/internal/handler/broadcast"
-	"lilly/internal/handler/socket"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -14,6 +12,8 @@ import (
 	"lilly/client/relay"
 	"lilly/internal/cache"
 	"lilly/internal/config"
+	"lilly/internal/handler/broadcast"
+	"lilly/internal/handler/socket"
 	"lilly/internal/util"
 )
 

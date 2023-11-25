@@ -1,8 +1,9 @@
 package socket
 
 import (
-	"github.com/gorilla/websocket"
 	"log/slog"
+
+	"github.com/gorilla/websocket"
 )
 
 type Socket struct {

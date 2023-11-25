@@ -119,7 +119,10 @@ func (wv *webSocketServer) relayCreatedChannel(channelId int64, joinedUsers []in
 		JoinedUsers: joinedUsers,
 	}
 
-	client := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	client, err := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
 	if err != nil {
 		return nil, err

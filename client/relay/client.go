@@ -1,19 +1,26 @@
 package relay
 
 import (
+	"context"
+	"errors"
 	"log/slog"
 	"math/rand"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"lilly/proto/relay"
 )
 
 type Client interface {
-	GetRelayClient(target string, port string) relay.RelayServiceClient
+	GetRelayClient(target string, port string) (relay.RelayServiceClient, error)
 }
+
+var (
+	ErrNotReady = errors.New("gRPC connection is not ready")
+)
 
 var _ Client = (*relayClient)(nil)
 
@@ -30,17 +37,24 @@ func NewRelayClient() Client {
 	}
 }
 
-func (rc *relayClient) GetRelayClient(target string, port string) relay.RelayServiceClient {
+func (rc *relayClient) GetRelayClient(target string, port string) (relay.RelayServiceClient, error) {
 	randIdx := rand.Intn(10)
 	if !rc.rcm.contains(target) {
-		rc.createRelayClient(target, port)
+		err := rc.createRelayClient(target, port)
+		if err != nil {
+			slog.Error("failed to create relay client", "error", err)
+			return nil, err
+		}
 	}
 
-	return rc.rcm[target][randIdx]
+	return rc.rcm[target][randIdx], nil
 }
 
-func (rc *relayClient) createRelayClient(target string, port string) {
-	relayConn, err := grpc.Dial(target+":"+port,
+func (rc *relayClient) createRelayClient(target string, port string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	relayConn, err := grpc.DialContext(ctx, target+":"+port,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(
 			keepalive.ClientParameters{
@@ -48,9 +62,18 @@ func (rc *relayClient) createRelayClient(target string, port string) {
 				Timeout:             3 * time.Second,
 				PermitWithoutStream: true,
 			},
-		))
+		), grpc.WithBlock())
 	if err != nil {
 		slog.Error("failed to connect", "error", err)
+		return err
+	}
+
+	state := relayConn.GetState()
+	if state == connectivity.Ready || state == connectivity.Idle || state == connectivity.Connecting {
+		slog.Info("gRPC connection is ready")
+	} else {
+		slog.Error("gRPC connection is not ready", "state", state)
+		return ErrNotReady
 	}
 
 	rc.rcm[target] = make([]relay.RelayServiceClient, 10)
@@ -58,6 +81,7 @@ func (rc *relayClient) createRelayClient(target string, port string) {
 		rc.rcm[target][i] = relay.NewRelayServiceClient(relayConn)
 		slog.Info("relay client connection", "i", i)
 	}
+	return nil
 }
 
 func (m relayClientMap) contains(key string) bool {

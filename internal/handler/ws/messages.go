@@ -3,8 +3,10 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 
+	rc "lilly/client/relay"
 	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
@@ -81,12 +83,26 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 			Message:     msg,
 			JoinedUsers: users,
 		}
-		_, err2 := wv.relayMessage(relayMsg, targetIP, config.GetString("relay.port"))
-		if err2 != nil {
-			slog.Error("Failed to relay message", "error", err2)
-			return
-		}
-		slog.Info("Relayed Message", "relayMsg", relayMsg)
+		go func() {
+			// NOTE: relay 실패시 커넥트가 안된 상태라면 이미 내려간 릴레이서버로 간주하고 redis 정보를 지운다.
+			relayMessage := relayMsg
+			ip := targetIP
+			_, relayError := wv.relayMessage(relayMessage, ip, config.GetString("relay.port"))
+			if errors.Is(relayError, rc.ErrNotReady) || errors.Is(relayError, context.DeadlineExceeded) {
+				slog.Error("Failed to connect relay server", "error", relayError)
+				for _, userId := range relayMessage.JoinedUsers {
+					cacheError := cache.DeleteUserLocation(userId)
+					if cacheError != nil {
+						slog.Error("GetUserInfo err", "error", cacheError)
+					}
+				}
+				return
+			} else if relayError != nil {
+				slog.Error("Failed to relay message", "error", relayError)
+				return
+			}
+			slog.Info("Relayed Message", "relayMsg", relayMsg)
+		}()
 	}
 
 	if len(notFoundUsers) > 0 {
@@ -157,7 +173,10 @@ func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*
 }
 
 func (wv *webSocketServer) relayMessage(relayMsg *relay.RequestRelayMessage, targetIP string, targetPort string) (*relay.ResponseRelayMessage, error) {
-	rc := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	rc, err := wv.relayClient.GetRelayClient(targetIP, targetPort)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := rc.RelayMessage(context.Background(), relayMsg)
 	if err != nil {
 		return nil, err

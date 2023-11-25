@@ -2,14 +2,14 @@ package relay
 
 import (
 	"context"
-	"lilly/internal/handler/broadcast"
-	"lilly/internal/protocol"
 	"log/slog"
 	"net"
 	"sync"
 
 	gr "google.golang.org/grpc"
 	"lilly/internal/config"
+	"lilly/internal/handler/broadcast"
+	"lilly/internal/protocol"
 	"lilly/internal/util"
 	"lilly/proto/relay"
 )
