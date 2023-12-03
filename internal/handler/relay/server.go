@@ -37,10 +37,10 @@ func NewRelayServer(broadcaster broadcast.Broadcaster) Server {
 	}
 }
 
-func (s *relayServer) RelayMessage(ctx context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
+func (s *relayServer) RelayMessage(_ context.Context, req *relay.RequestRelayMessage) (*relay.ResponseRelayMessage, error) {
 	slog.Info("RelayMessage", "text", req.Message.Text)
 
-	jsonData, err := util.CreateJsonData("message", req.Message)
+	jsonData, err := util.CreateJSONData("message", req.Message)
 	if err != nil {
 		slog.Error("Failed to marshal Json", "error", err)
 		return nil, err

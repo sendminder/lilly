@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 
@@ -15,30 +16,44 @@ import (
 	"lilly/internal/handler/ws"
 )
 
+var (
+	errFailedToStartServer = errors.New("failed to start server")
+)
+
 func main() {
 	viper.AutomaticEnv()
 	ctx := context.Background()
 	if err := run(ctx); err != nil {
-		test := 1
-		slog.Error("failed to run", "test", test)
+		slog.Error("failed to run", "error", err)
 	}
 	slog.Info("server terminated")
 }
 
-func run(ctx context.Context) error {
+func run(_ context.Context) error {
 	config.Init()
 	go cache.CreateRedisConnection()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	broadcaster := broadcast.NewBroadcaster()
-
 	relayServer := rs.NewRelayServer(broadcaster)
+	if relayServer == nil {
+		return errFailedToStartServer
+	}
 	go relayServer.StartRelayServer(&wg)
 
 	relayClient := rc.NewRelayClient()
+	if relayClient == nil {
+		return errFailedToStartServer
+	}
 	messageClient := message.NewMessageClient(10)
+	if messageClient == nil {
+		return errFailedToStartServer
+	}
 	webSocketServer := ws.NewWebSocketServer(broadcaster, relayClient, messageClient)
+	if webSocketServer == nil {
+		return errFailedToStartServer
+	}
 	go webSocketServer.StartWebSocketServer(&wg, config.GetInt("websocket.port"))
 
 	wg.Wait()

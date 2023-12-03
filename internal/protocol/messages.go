@@ -3,24 +3,24 @@ package protocol
 import "encoding/json"
 
 type CreateMessage struct {
-	SenderId    int64  `json:"sender_id"`
-	ChannelId   int64  `json:"channel_id"`
+	SenderID    int64  `json:"sender_id"`
+	ChannelID   int64  `json:"channel_id"`
 	ChannelType string `json:"channel_type"`
 	Text        string `json:"text"`
 }
 
 type ReadMessage struct {
-	UserId    int64 `json:"user_id"`
-	ChannelId int64 `json:"channel_id"`
-	MessageId int64 `json:"message_id"`
+	UserID    int64 `json:"user_id"`
+	ChannelID int64 `json:"channel_id"`
+	MessageID int64 `json:"message_id"`
 }
 
 type DecryptChannel struct {
-	ChannelId int64 `json:"channel_id"`
+	ChannelID int64 `json:"channel_id"`
 }
 
 type FinishChannel struct {
-	ChannelId int64 `json:"channel_id"`
+	ChannelID int64 `json:"channel_id"`
 }
 
 type BroadcastEvent struct {

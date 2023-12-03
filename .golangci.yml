@@ -1,0 +1,99 @@
+# Options for analysis running.
+# https://golangci-lint.run/usage/configuration
+run:
+  timeout: 5m
+  tests: false
+  allow-parallel-runners: false
+
+linters:
+  enable-all: true
+  exclude-use-default: false
+  disable:
+    - godox # Tool for detection of FIXME, TODO and other comment keywords.
+    - nosnakecase # The repository of the linter has been deprecated by the owner. Replaced by revive(var-naming).
+    - wrapcheck # Checks that errors returned from external packages are wrapped.
+    - varnamelen # checks that the length of a variable's name matches its scope.
+    - lll # Reports long lines.
+    - funlen # Tool for detection of long functions.
+    - exhaustivestruct # The owner seems to have abandoned the linter. Replaced by exhaustruct.
+    - nlreturn # nlreturn checks for a new line before return and branch statements to increase code clarity.
+    - ireturn # Accept Interfaces, Return Concrete Types.
+    - cyclop # checks function and package cyclomatic complexity.
+    - maligned # The repository of the linter has been archived by the owner. Replaced by govet 'fieldalignment'.
+    - gomnd # An analyzer to detect magic numbers.
+    - gochecknoglobals # check that no global variables exist. This analyzer checks for global variables and errors on any found.
+    - goimports # Check import statements are formatted according to the 'goimport' command. Reformat imports in autofix mode.
+    - gofumpt # Gofumpt checks whether code was gofumpt-ed.
+    - godot # Check if comments end in a period.
+    - exhaustruct # Checks if all structure fields are initialized. struct 생성시 zero value를 활용하는 경우가 많아 불필요할 것 같아 제외. by neth
+    - exhaustive # Check exhaustiveness of enum switch statements.
+    - wsl # Whitespace Linter - Forces you to use empty lines!
+    - gocyclo # Computes and checks the cyclomatic complexity of functions.
+    - stylecheck # Stylecheck is a replacement for golint.
+    - gochecknoinits # Checks that no init functions are present in Go code
+    - interfacebloat # A linter that checks the number of methods inside an interface.
+    - depguard # Go linter that checks if package imports are in a list of acceptable packages. NOTE(Craig): 제한하고 싶은 패키지가 생길 때 다시 enable 시키기.
+    - ineffassign # Detects when assignments to existing variables are not used.
+    - gosec # Inspects source code for security problems by scanning the Go AST.
+    - containedctx # Checks that context.WithCancel is not passed a context that is already canceled.
+
+    # Deprecated linters.
+    - deadcode # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter.  Replaced by unused.
+    - interfacer # deprecated (since v1.38.0) due to: The repository of the linter has been archived by the owner.
+    - structcheck # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter.  Replaced by unused.
+    - scopelint # deprecated (since v1.39.0) due to: The repository of the linter has been deprecated by the owner.  Replaced by exportloopref.
+    - varcheck # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter.  Replaced by unused.
+    - golint # deprecated (since v1.41.0) due to: The repository of the linter has been archived by the owner.  Replaced by revive.
+    - ifshort # deprecated (since v1.48.0) due to: The repository of the linter has been deprecated by the owner.
+    - rowserrcheck # disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+    - sqlclosecheck # disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+    - structcheck # disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+    - wastedassign # disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649.
+
+linters-settings:
+  # https://golangci-lint.run/usage/linters/#tagliatelle
+  tagliatelle:
+    case:
+      use-field-name: true
+      rules:
+        json: snake
+        dynamo: snake
+
+  # https://golangci-lint.run/usage/linters/#errcheck
+  errcheck:
+    ignore: fmt:.*,io/ioutil:^Read.*
+
+  # https://golangci-lint.run/usage/linters/#dupl
+  dupl:
+    threshold: 200
+
+  # https://golangci-lint.run/usage/linters/#tagalign
+  tagalign:
+    sort: false
+
+  # https://golangci-lint.run/usage/linters#staticcheck
+  staticcheck:
+    # https://staticcheck.io/docs/checks
+    # SA1019: Using a deprecated function, variable, constant or field
+    checks: ["all", "-SA1019"]
+
+  # https://golangci-lint.run/usage/linters/#gci
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/daangn/rocket-chat-addon)
+    custom-order: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - gosec
+    - linters:
+        - lll
+      source: "^//go:generate "
+  max-issues-per-linter: 0
+  max-same-issues: 0

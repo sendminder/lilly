@@ -3,7 +3,7 @@ package util
 import "encoding/json"
 
 // key, value로 마샬링
-func CreateJsonData(key string, value interface{}) ([]byte, error) {
+func CreateJSONData(key string, value interface{}) ([]byte, error) {
 	data := map[string]interface{}{
 		key: value,
 	}

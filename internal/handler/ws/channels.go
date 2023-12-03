@@ -12,7 +12,7 @@ import (
 type ChannelHandler interface {
 	handleDecryptChannel(payload json.RawMessage)
 	handleFinishChannel(payload json.RawMessage)
-	createChannel(name string, userId int64, joinedUsers []int64) (*msg.ResponseCreateChannel, error)
+	createChannel(name string, userID int64, joinedUsers []int64) (*msg.ResponseCreateChannel, error)
 }
 
 func (wv *webSocketServer) handleDecryptChannel(payload json.RawMessage) {
@@ -23,7 +23,7 @@ func (wv *webSocketServer) handleDecryptChannel(payload json.RawMessage) {
 		return
 	}
 	// 받은 메시지를 출력
-	slog.Info("[ReqDecryptChannel]", "channelId", reqDecryptChannel.ChannelId)
+	slog.Info("[ReqDecryptChannel]", "channelID", reqDecryptChannel.ChannelID)
 	resp, err := wv.decryptChannel(reqDecryptChannel)
 	if err != nil {
 		slog.Error("Failed to decrypt channel", "error", err)
@@ -43,7 +43,7 @@ func (wv *webSocketServer) handleFinishChannel(payload json.RawMessage) {
 		return
 	}
 
-	slog.Info("[ReqFinishChannel]", "channelId", reqFinishChannel.ChannelId)
+	slog.Info("[ReqFinishChannel]", "channelID", reqFinishChannel.ChannelID)
 	resp, err := wv.finishChannel(reqFinishChannel)
 	if err != nil {
 		slog.Error("Failed to finish channel", "error", err)
@@ -55,10 +55,10 @@ func (wv *webSocketServer) handleFinishChannel(payload json.RawMessage) {
 	// finish_channel 받으면, 클라에서 deactivated 처리
 }
 
-func (wv *webSocketServer) createChannel(name string, userId int64, joinedUsers []int64) (*msg.ResponseCreateChannel, error) {
+func (wv *webSocketServer) createChannel(name string, userID int64, joinedUsers []int64) (*msg.ResponseCreateChannel, error) {
 	createChannel := &msg.RequestCreateChannel{
 		Name:        name,
-		HostUserId:  userId,
+		HostUserId:  userID,
 		JoinedUsers: joinedUsers,
 	}
 
@@ -71,7 +71,7 @@ func (wv *webSocketServer) createChannel(name string, userId int64, joinedUsers 
 
 func (wv *webSocketServer) decryptChannel(reqDecryptChannel protocol.DecryptChannel) (*msg.ResponseDecryptChannel, error) {
 	decryptChannel := &msg.RequestDecryptChannel{
-		ChannelId: reqDecryptChannel.ChannelId,
+		ChannelId: reqDecryptChannel.ChannelID,
 	}
 
 	resp, err := wv.messageClient.GetMessageClient().DecryptChannel(context.Background(), decryptChannel)
@@ -83,7 +83,7 @@ func (wv *webSocketServer) decryptChannel(reqDecryptChannel protocol.DecryptChan
 
 func (wv *webSocketServer) finishChannel(reqFinishChannel protocol.FinishChannel) (*msg.ResponseFinishChannel, error) {
 	finishChannel := &msg.RequestFinishChannel{
-		ChannelId: reqFinishChannel.ChannelId,
+		ChannelId: reqFinishChannel.ChannelID,
 	}
 
 	resp, err := wv.messageClient.GetMessageClient().FinishChannel(context.Background(), finishChannel)

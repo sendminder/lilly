@@ -13,8 +13,13 @@ import (
 )
 
 const (
-	ROLE_BEAR   = "bear"
-	ROLE_RABBIT = "rabbit"
+	RoleBear   = "bear"
+	RoleRabbit = "rabbit"
+)
+
+var (
+	errNotFoundRole = errors.New("not found role")
+	errNotFoundUser = errors.New("not found user")
 )
 
 type MatchHandler interface {
@@ -29,7 +34,7 @@ func (wv *webSocketServer) handleRegisterRole(payload json.RawMessage) {
 		return
 	}
 
-	slog.Info("[ReqRegisterRole]", "userId", reqRegisterRole.UserId, "roleType", reqRegisterRole.RoleType)
+	slog.Info("[ReqRegisterRole]", "userID", reqRegisterRole.UserID, "roleType", reqRegisterRole.RoleType)
 	err := wv.registerRole(reqRegisterRole)
 	if err != nil {
 		slog.Error("Failed to read message", "error", err)
@@ -49,36 +54,39 @@ func (wv *webSocketServer) registerRole(reqRegisterRole protocol.RegisterRole) e
 
 	var targetRole = ""
 	myRole := reqRegisterRole.RoleType
-	myUserId := reqRegisterRole.UserId
+	myUserID := reqRegisterRole.UserID
 
 	switch myRole {
-	case ROLE_BEAR:
-		targetRole = ROLE_RABBIT
-	case ROLE_RABBIT:
-		targetRole = ROLE_RABBIT
+	case RoleBear:
+		targetRole = RoleRabbit
+	case RoleRabbit:
+		targetRole = RoleBear
 	default:
-		return errors.New("not found role")
+		return errNotFoundRole
 	}
 
-	targetUserId, err := cache.DequeueReadyUser(targetRole)
-	if err != nil || targetUserId == 0 {
-		wv.readyToUser(myRole, myUserId)
-		return nil
+	targetUserID, err := cache.DequeueReadyUser(targetRole)
+	if err != nil {
+		wv.readyToUser(myRole, myUserID)
+		return err
 	}
 
-	// send created event to userId, myUserId
-	// targetUserId
-	targetLocation, err := cache.GetUserLocation(targetUserId)
-	if err != nil || targetLocation == "" {
-		wv.readyToUser(myRole, myUserId)
-		return nil
+	// send created event to userID, myUserID
+	targetLocation, err := cache.GetUserLocation(targetUserID)
+	if err != nil {
+		wv.readyToUser(myRole, myUserID)
+		return err
+	}
+	if targetLocation == "" || targetUserID == 0 {
+		wv.readyToUser(myRole, myUserID)
+		return errNotFoundUser
 	}
 
 	// create channel
-	joinedUsers := []int64{myUserId, targetUserId}
-	res, err := wv.createChannel("BareRabbit", myUserId, joinedUsers)
+	joinedUsers := []int64{myUserID, targetUserID}
+	res, err := wv.createChannel("BareRabbit", myUserID, joinedUsers)
 	if err != nil {
-		slog.Error("[Error] cant create channel", "myUserId", myUserId)
+		slog.Error("[Error] cant create channel", "myUserID", myUserID)
 		return err
 	}
 
@@ -97,21 +105,24 @@ func (wv *webSocketServer) registerRole(reqRegisterRole protocol.RegisterRole) e
 		return nil
 	}
 
-	wv.relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation, "50051")
+	_, err = wv.relayCreatedChannel(res.ChannelId, joinedUsers, targetLocation, "50051")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (wv *webSocketServer) readyToUser(myRole string, myUserId int64) {
-	cache.EnqueueReadyUser(myRole, myUserId)
+func (wv *webSocketServer) readyToUser(myRole string, myUserID int64) {
+	cache.EnqueueReadyUser(myRole, myUserID)
 	// send event "ready"
-	wv.relayEvent("ready", []int64{myUserId}, []byte{})
-	slog.Info("not found ready user", "userId", myUserId)
+	wv.relayEvent("ready", []int64{myUserID}, []byte{})
+	slog.Info("not found ready user", "userID", myUserID)
 }
 
-func (wv *webSocketServer) relayCreatedChannel(channelId int64, joinedUsers []int64, targetIP string, targetPort string) (*relay.ResponseRelayCreatedChannel, error) {
+func (wv *webSocketServer) relayCreatedChannel(channelID int64, joinedUsers []int64, targetIP string, targetPort string) (*relay.ResponseRelayCreatedChannel, error) {
 	payload := &relay.CreatedChannelPayload{
-		ChannelId: channelId,
+		ChannelId: channelID,
 	}
 	reqCreatedChannel := &relay.RequestRelayCreatedChannel{
 		Event:       "created_channel",

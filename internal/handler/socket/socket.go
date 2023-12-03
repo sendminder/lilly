@@ -9,7 +9,7 @@ import (
 type Socket struct {
 	Conn   *websocket.Conn
 	Send   chan []byte
-	UserId int64
+	UserID int64
 }
 
 func (c Socket) WritePump() {

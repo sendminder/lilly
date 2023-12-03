@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -52,7 +53,7 @@ func GetUserLocation(userID int64) (string, error) {
 	// 키를 이용해 Redis에서 값을 가져옴
 	location, err := RedisClient.Get(context.Background(), fmt.Sprintf("user:%d:location", userID)).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return "", nil
 		}
 		return "", err
@@ -64,10 +65,10 @@ func GetUserLocations(userIDs []int64) (map[int64]string, error) {
 	// TODO: use pipeline
 	// 결과를 map으로 변환
 	locations := make(map[int64]string)
-	for i, userId := range userIDs {
-		location, err := GetUserLocation(userId)
+	for i, userID := range userIDs {
+		location, err := GetUserLocation(userID)
 		if err != nil {
-			if err != redis.Nil {
+			if !errors.Is(err, redis.Nil) {
 				return nil, err
 			}
 			locations[userIDs[i]] = ""
@@ -79,24 +80,24 @@ func GetUserLocations(userIDs []int64) (map[int64]string, error) {
 	return locations, nil
 }
 
-func EnqueueReadyUser(roleType string, userId int64) bool {
+func EnqueueReadyUser(roleType string, userID int64) bool {
 	key := "queue" + roleType
-	_, err := RedisClient.LPush(context.Background(), key, userId).Result()
+	_, err := RedisClient.LPush(context.Background(), key, userID).Result()
 	if err != nil {
 		slog.Error("Error enqueuing user", "error", err)
 		return false
 	}
-	slog.Info("[EnqueueReadyUser]", "key", key, "userId", userId)
+	slog.Info("[EnqueueReadyUser]", "key", key, "userID", userID)
 	return true
 }
 
 func DequeueReadyUser(roleType string) (int64, error) {
 	key := "queue" + roleType
-	userId, err := RedisClient.RPop(context.Background(), key).Int64()
-	if err != nil && err != redis.Nil {
+	userID, err := RedisClient.RPop(context.Background(), key).Int64()
+	if err != nil && !errors.Is(err, redis.Nil) {
 		slog.Error("Error dequeuing user", "error", err)
 		return 0, err
 	}
-	slog.Info("[DequeueReadyUser]", "key", key, "userId", userId)
-	return userId, nil
+	slog.Info("[DequeueReadyUser]", "key", key, "userID", userID)
+	return userID, nil
 }

@@ -33,7 +33,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		return
 	}
 	// 받은 메시지를 출력합니다.
-	slog.Info("[ReqCreateMessage]", "channelId", reqCreateMsg.ChannelId, "text", reqCreateMsg.Text)
+	slog.Info("[ReqCreateMessage]", "channelID", reqCreateMsg.ChannelID, "text", reqCreateMsg.Text)
 
 	// 메시지 생성 요청
 	resp, err := wv.createMessage(reqCreateMsg)
@@ -56,21 +56,21 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 	}
 	targetRelayMap := make(map[string][]int64)
 	notFoundUsers := make([]int64, 0)
-	for userId, location := range userInfos {
+	for userID, location := range userInfos {
 		if location == "" {
-			notFoundUsers = append(notFoundUsers, userId)
+			notFoundUsers = append(notFoundUsers, userID)
 			continue
 		}
 		if location != config.LocalIP+":"+config.GetString("websocket.port") {
-			targetRelayMap[location] = append(targetRelayMap[location], userId)
+			targetRelayMap[location] = append(targetRelayMap[location], userID)
 		}
 	}
 
 	msg := &relay.Message{
 		Id:        resp.Message.Id,
-		ChannelId: reqCreateMsg.ChannelId,
+		ChannelId: reqCreateMsg.ChannelID,
 		Text:      reqCreateMsg.Text,
-		SenderId:  reqCreateMsg.SenderId,
+		SenderId:  reqCreateMsg.SenderID,
 		Animal:    "cat",
 	}
 
@@ -89,9 +89,9 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		_, relayError := wv.relayMessage(relayMsg, targetIP, config.GetString("relay.port"))
 		if errors.Is(relayError, rc.ErrNotReady) || errors.Is(relayError, context.DeadlineExceeded) {
 			slog.Error("Failed to connect relay server", "error", relayError)
-			for _, userId := range relayMsg.JoinedUsers {
-				cacheError := cache.DeleteUserLocation(userId)
-				notFoundUsers = append(notFoundUsers, userId)
+			for _, userID := range relayMsg.JoinedUsers {
+				cacheError := cache.DeleteUserLocation(userID)
+				notFoundUsers = append(notFoundUsers, userID)
 				if cacheError != nil {
 					slog.Error("GetUserInfo err", "error", cacheError)
 				}
@@ -112,7 +112,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		}
 	}
 
-	jsonData, err := util.CreateJsonData("message", resp.Message)
+	jsonData, err := util.CreateJSONData("message", resp.Message)
 	if err != nil {
 		slog.Error("Failed to marshal Json", "error", err)
 		return
@@ -144,7 +144,7 @@ func (wv *webSocketServer) handleReadMessage(payload json.RawMessage) {
 	}
 
 	// 받은 메시지를 출력합니다.
-	slog.Info("[ReqReadMessage]", "channelId", reqReadMsg.ChannelId, "messageId", reqReadMsg.MessageId)
+	slog.Info("[ReqReadMessage]", "channelID", reqReadMsg.ChannelID, "messageID", reqReadMsg.MessageID)
 	resp, err := wv.readMessage(reqReadMsg)
 	if err != nil {
 		slog.Error("Failed to read message", "error", err)
@@ -158,8 +158,8 @@ func (wv *webSocketServer) handleReadMessage(payload json.RawMessage) {
 
 func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseCreateMessage, error) {
 	createMsg := &msg.RequestCreateMessage{
-		SenderId:    reqCreateMsg.SenderId,
-		ChannelId:   reqCreateMsg.ChannelId,
+		SenderId:    reqCreateMsg.SenderID,
+		ChannelId:   reqCreateMsg.ChannelID,
 		ChannelType: reqCreateMsg.ChannelType,
 		Text:        reqCreateMsg.Text,
 	}
@@ -185,9 +185,9 @@ func (wv *webSocketServer) relayMessage(relayMsg *relay.RequestRelayMessage, tar
 
 func (wv *webSocketServer) readMessage(reqReadMsg protocol.ReadMessage) (*msg.ResponseReadMessage, error) {
 	readMsg := &msg.RequestReadMessage{
-		UserId:    reqReadMsg.UserId,
-		ChannelId: reqReadMsg.ChannelId,
-		MessageId: reqReadMsg.MessageId,
+		UserId:    reqReadMsg.UserID,
+		ChannelId: reqReadMsg.ChannelID,
+		MessageId: reqReadMsg.MessageID,
 	}
 
 	resp, err := wv.messageClient.GetMessageClient().ReadMessage(context.Background(), readMsg)
@@ -213,8 +213,8 @@ func (wv *webSocketServer) pushMessage(req *msg.Message, receivers []int64) (*ms
 
 func (wv *webSocketServer) createBotMessage(reqCreateMsg protocol.CreateMessage) (*msg.ResponseBotMessage, error) {
 	createBotMsg := &msg.RequestBotMessage{
-		SenderId:    reqCreateMsg.SenderId,
-		ChannelId:   reqCreateMsg.ChannelId,
+		SenderId:    reqCreateMsg.SenderID,
+		ChannelId:   reqCreateMsg.ChannelID,
 		ChannelType: reqCreateMsg.ChannelType,
 		Text:        reqCreateMsg.Text,
 	}

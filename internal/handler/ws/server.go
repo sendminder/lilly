@@ -88,7 +88,7 @@ func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *h
 		Conn: conn,
 		Send: make(chan []byte),
 	}
-	newClient.UserId = util.GetClientUserId(r)
+	newClient.UserID = util.GetClientUserID(r)
 
 	wv.broadcaster.Register <- newClient
 	defer func() {
@@ -96,7 +96,7 @@ func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *h
 	}()
 
 	// 클라이언트와의 웹소켓 연결이 성공적으로 이루어졌을 때 로직을 작성합니다.
-	slog.Info("Client connected", "userId", newClient.UserId, "localIP", config.LocalIP)
+	slog.Info("Client connected", "userID", newClient.UserID, "localIP", config.LocalIP)
 
 	go newClient.WritePump()
 
@@ -112,7 +112,7 @@ func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *h
 	}
 }
 
-func (wv *webSocketServer) handleWebSocketMessage(conn *websocket.Conn, message []byte) {
+func (wv *webSocketServer) handleWebSocketMessage(_ *websocket.Conn, message []byte) {
 	var clientRequest struct {
 		Event   string          `json:"event"`
 		Payload json.RawMessage `json:"payload"`
@@ -150,10 +150,10 @@ func (wv *webSocketServer) handleMessages() {
 		select {
 		case msg := <-wv.broadcaster.Broadcast:
 			// 메시지를 받아서 모든 클라이언트에게 보냅니다.
-			for _, joinedUserId := range msg.JoinedUsers {
-				wv.clientLock[joinedUserId%10].Lock()
-				if wv.activeClients.contains(joinedUserId) {
-					client := wv.activeClients[joinedUserId]
+			for _, joinedUserID := range msg.JoinedUsers {
+				wv.clientLock[joinedUserID%10].Lock()
+				if wv.activeClients.contains(joinedUserID) {
+					client := wv.activeClients[joinedUserID]
 
 					data := map[string]interface{}{
 						"event":   msg.Event,
@@ -173,33 +173,33 @@ func (wv *webSocketServer) handleMessages() {
 						// 보내기 실패한 경우 클라이언트를 제거합니다.
 						slog.Error("broadcast Error acquired")
 						close(client.Send)
-						wv.activeClients.delete(joinedUserId)
+						wv.activeClients.delete(joinedUserID)
 					}
 				}
-				wv.clientLock[joinedUserId%10].Unlock()
+				wv.clientLock[joinedUserID%10].Unlock()
 			}
 		case newSocket := <-wv.broadcaster.Register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
 			location := config.LocalIP + ":" + strconv.Itoa(config.WebSocketPort)
-			err := cache.SetUserLocation(newSocket.UserId, location)
+			err := cache.SetUserLocation(newSocket.UserID, location)
 			if err != nil {
 				slog.Error("register error", "error", err)
 				close(newSocket.Send)
-				wv.activeClients.delete(newSocket.UserId)
+				wv.activeClients.delete(newSocket.UserID)
 			} else {
-				slog.Info("registered", "userId", newSocket.UserId, "location", location)
-				wv.activeClients[newSocket.UserId] = newSocket
+				slog.Info("registered", "userID", newSocket.UserID, "location", location)
+				wv.activeClients[newSocket.UserID] = newSocket
 			}
 		case closeSocket := <-wv.broadcaster.Unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
-			err := cache.DeleteUserLocation(closeSocket.UserId)
+			err := cache.DeleteUserLocation(closeSocket.UserID)
 			if err != nil {
 				slog.Error("unregister error", "error", err)
 			}
-			slog.Info("unregistered", "userId", closeSocket.UserId)
-			if _, ok := wv.activeClients[closeSocket.UserId]; ok {
+			slog.Info("unregistered", "userID", closeSocket.UserID)
+			if _, ok := wv.activeClients[closeSocket.UserID]; ok {
 				close(closeSocket.Send)
-				wv.activeClients.delete(closeSocket.UserId)
+				wv.activeClients.delete(closeSocket.UserID)
 			}
 		}
 	}
@@ -210,11 +210,9 @@ func (m clientMap) contains(key int64) bool {
 	return found
 }
 
-func (m clientMap) delete(key int64) bool {
+func (m clientMap) delete(key int64) {
 	_, found := m[key]
 	if found {
 		delete(m, key)
-		return true
 	}
-	return false
 }
