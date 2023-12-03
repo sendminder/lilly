@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -133,7 +132,7 @@ func (wv *webSocketServer) relayCreatedChannel(channelID int64, joinedUsers []in
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.RelayCreatedChannel(context.Background(), reqCreatedChannel)
+	resp, err := client.RelayCreatedChannel(wv.ctx, reqCreatedChannel)
 	if err != nil {
 		return nil, err
 	}

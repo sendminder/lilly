@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 
@@ -62,7 +61,7 @@ func (wv *webSocketServer) createChannel(name string, userID int64, joinedUsers 
 		JoinedUsers: joinedUsers,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().CreateChannel(context.Background(), createChannel)
+	resp, err := wv.messageClient.GetMessageClient().CreateChannel(wv.ctx, createChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +73,7 @@ func (wv *webSocketServer) decryptChannel(reqDecryptChannel protocol.DecryptChan
 		ChannelId: reqDecryptChannel.ChannelID,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().DecryptChannel(context.Background(), decryptChannel)
+	resp, err := wv.messageClient.GetMessageClient().DecryptChannel(wv.ctx, decryptChannel)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +85,7 @@ func (wv *webSocketServer) finishChannel(reqFinishChannel protocol.FinishChannel
 		ChannelId: reqFinishChannel.ChannelID,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().FinishChannel(context.Background(), finishChannel)
+	resp, err := wv.messageClient.GetMessageClient().FinishChannel(wv.ctx, finishChannel)
 	if err != nil {
 		return nil, err
 	}

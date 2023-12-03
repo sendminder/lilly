@@ -40,7 +40,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		slog.Error("Failed to create message", "error", err)
 		return
 	}
-	slog.Info("Created Message", "resp", resp)
+	slog.Info("Created Message", "resp", resp.Message)
 
 	/*
 		1. joined_users 중 현재 local에 있는 유저에게 릴레이
@@ -149,7 +149,7 @@ func (wv *webSocketServer) handleReadMessage(payload json.RawMessage) {
 		slog.Error("Failed to read message", "error", err)
 		return
 	}
-	slog.Info("Readed Message", "resp", resp)
+	slog.Info("Read Message", "resp", resp)
 
 	// TODO: read_message relay
 	// read_message 릴레이하면, 클라에서 안읽은 유저수 카운트 처리할수있나?
@@ -163,7 +163,7 @@ func (wv *webSocketServer) createMessage(reqCreateMsg protocol.CreateMessage) (*
 		Text:        reqCreateMsg.Text,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().CreateMessage(context.Background(), createMsg)
+	resp, err := wv.messageClient.GetMessageClient().CreateMessage(wv.ctx, createMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (wv *webSocketServer) relayMessage(relayMsg *relay.RequestRelayMessage, tar
 	if err != nil {
 		return nil, err
 	}
-	resp, err := rc.RelayMessage(context.Background(), relayMsg)
+	resp, err := rc.RelayMessage(wv.ctx, relayMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (wv *webSocketServer) readMessage(reqReadMsg protocol.ReadMessage) (*msg.Re
 		MessageId: reqReadMsg.MessageID,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().ReadMessage(context.Background(), readMsg)
+	resp, err := wv.messageClient.GetMessageClient().ReadMessage(wv.ctx, readMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (wv *webSocketServer) pushMessage(req *msg.Message, receivers []int64) (*ms
 		ReceiverUserIds: receivers,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().PushMessage(context.Background(), pushMsg)
+	resp, err := wv.messageClient.GetMessageClient().PushMessage(wv.ctx, pushMsg)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (wv *webSocketServer) createBotMessage(reqCreateMsg protocol.CreateMessage)
 		Text:        reqCreateMsg.Text,
 	}
 
-	resp, err := wv.messageClient.GetMessageClient().CreateBotMessage(context.Background(), createBotMsg)
+	resp, err := wv.messageClient.GetMessageClient().CreateBotMessage(wv.ctx, createBotMsg)
 	if err != nil {
 		return nil, err
 	}

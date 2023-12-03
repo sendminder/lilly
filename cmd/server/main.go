@@ -43,7 +43,7 @@ func run(ctx context.Context) error {
 	}
 	go relayServer.StartRelayServer(&wg)
 
-	relayClient := rc.NewRelayClient()
+	relayClient := rc.NewRelayClient(ctx)
 	if relayClient == nil {
 		return errFailedToStartServer
 	}
@@ -55,7 +55,7 @@ func run(ctx context.Context) error {
 	if redisClient == nil {
 		return errFailedToStartServer
 	}
-	webSocketServer := ws.NewWebSocketServer(broadcaster, relayClient, messageClient, redisClient)
+	webSocketServer := ws.NewWebSocketServer(ctx, broadcaster, relayClient, messageClient, redisClient)
 	if webSocketServer == nil {
 		return errFailedToStartServer
 	}

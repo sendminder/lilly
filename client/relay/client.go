@@ -27,12 +27,14 @@ var _ Client = (*relayClient)(nil)
 type relayClientMap map[string][]relay.RelayServiceClient
 
 type relayClient struct {
+	ctx context.Context
 	rcm relayClientMap
 }
 
-func NewRelayClient() Client {
+func NewRelayClient(ctx context.Context) Client {
 	rcm := make(relayClientMap)
 	return &relayClient{
+		ctx: ctx,
 		rcm: rcm,
 	}
 }
@@ -51,7 +53,7 @@ func (rc *relayClient) GetRelayClient(target string, port string) (relay.RelaySe
 }
 
 func (rc *relayClient) createRelayClient(target string, port string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(rc.ctx, 3*time.Second)
 	defer cancel()
 
 	relayConn, err := grpc.DialContext(ctx, target+":"+port,

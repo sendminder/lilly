@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -30,6 +31,7 @@ var _ WebSocketServer = (*webSocketServer)(nil)
 type clientMap map[int64]*socket.Socket
 
 type webSocketServer struct {
+	ctx           context.Context
 	activeClients clientMap
 	broadcaster   broadcast.Broadcaster
 	clientLock    []sync.Mutex
@@ -39,7 +41,7 @@ type webSocketServer struct {
 	redisClient   cache.RedisClient
 }
 
-func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Client, messageClient message.Client,
+func NewWebSocketServer(ctx context.Context, broadcaster broadcast.Broadcaster, relayClient relay.Client, messageClient message.Client,
 	redisClient cache.RedisClient) WebSocketServer {
 	activeClients := make(clientMap)
 	clientLock := make([]sync.Mutex, 10)
@@ -52,6 +54,7 @@ func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Cli
 		},
 	}
 	return &webSocketServer{
+		ctx:           ctx,
 		activeClients: activeClients,
 		broadcaster:   broadcaster,
 		clientLock:    clientLock,
@@ -110,12 +113,11 @@ func (wv *webSocketServer) handleWebSocketConnection(w http.ResponseWriter, r *h
 			slog.Error("Error reading message", "err", err, "msgType", messageType)
 			break
 		}
-
-		wv.handleWebSocketMessage(conn, msg)
+		wv.handleWebSocketMessage(msg)
 	}
 }
 
-func (wv *webSocketServer) handleWebSocketMessage(_ *websocket.Conn, message []byte) {
+func (wv *webSocketServer) handleWebSocketMessage(message []byte) {
 	var clientRequest struct {
 		Event   string          `json:"event"`
 		Payload json.RawMessage `json:"payload"`
@@ -123,7 +125,7 @@ func (wv *webSocketServer) handleWebSocketMessage(_ *websocket.Conn, message []b
 
 	jsonErr := json.Unmarshal(message, &clientRequest)
 	if jsonErr != nil {
-		slog.Error("Json Error", "error", jsonErr)
+		slog.Error("JSON Error", "error", jsonErr)
 		return
 	}
 
