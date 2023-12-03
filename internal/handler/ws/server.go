@@ -36,9 +36,11 @@ type webSocketServer struct {
 	upgrade       websocket.Upgrader
 	relayClient   relay.Client
 	messageClient message.Client
+	redisClient   cache.RedisClient
 }
 
-func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Client, messageClient message.Client) WebSocketServer {
+func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Client, messageClient message.Client,
+	redisClient cache.RedisClient) WebSocketServer {
 	activeClients := make(clientMap)
 	clientLock := make([]sync.Mutex, 10)
 	upgrade := websocket.Upgrader{
@@ -56,6 +58,7 @@ func NewWebSocketServer(broadcaster broadcast.Broadcaster, relayClient relay.Cli
 		upgrade:       upgrade,
 		relayClient:   relayClient,
 		messageClient: messageClient,
+		redisClient:   redisClient,
 	}
 }
 
@@ -181,7 +184,7 @@ func (wv *webSocketServer) handleMessages() {
 		case newSocket := <-wv.broadcaster.Register:
 			// 새로운 클라이언트를 activeClients에 등록합니다.
 			location := config.LocalIP + ":" + strconv.Itoa(config.WebSocketPort)
-			err := cache.SetUserLocation(newSocket.UserID, location)
+			err := wv.redisClient.SetUserLocation(newSocket.UserID, location)
 			if err != nil {
 				slog.Error("register error", "error", err)
 				close(newSocket.Send)
@@ -192,7 +195,7 @@ func (wv *webSocketServer) handleMessages() {
 			}
 		case closeSocket := <-wv.broadcaster.Unregister:
 			// 연결이 끊긴 클라이언트를 activeClients에서 제거합니다.
-			err := cache.DeleteUserLocation(closeSocket.UserID)
+			err := wv.redisClient.DeleteUserLocation(closeSocket.UserID)
 			if err != nil {
 				slog.Error("unregister error", "error", err)
 			}

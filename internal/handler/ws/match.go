@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 
-	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
 	"lilly/proto/relay"
@@ -65,14 +64,14 @@ func (wv *webSocketServer) registerRole(reqRegisterRole protocol.RegisterRole) e
 		return errNotFoundRole
 	}
 
-	targetUserID, err := cache.DequeueReadyUser(targetRole)
+	targetUserID, err := wv.redisClient.DequeueReadyUser(targetRole)
 	if err != nil {
 		wv.readyToUser(myRole, myUserID)
 		return err
 	}
 
 	// send created event to userID, myUserID
-	targetLocation, err := cache.GetUserLocation(targetUserID)
+	targetLocation, err := wv.redisClient.GetUserLocation(targetUserID)
 	if err != nil {
 		wv.readyToUser(myRole, myUserID)
 		return err
@@ -114,7 +113,7 @@ func (wv *webSocketServer) registerRole(reqRegisterRole protocol.RegisterRole) e
 }
 
 func (wv *webSocketServer) readyToUser(myRole string, myUserID int64) {
-	cache.EnqueueReadyUser(myRole, myUserID)
+	wv.redisClient.EnqueueReadyUser(myRole, myUserID)
 	// send event "ready"
 	wv.relayEvent("ready", []int64{myUserID}, []byte{})
 	slog.Info("not found ready user", "userID", myUserID)

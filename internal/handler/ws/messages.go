@@ -7,7 +7,6 @@ import (
 	"log/slog"
 
 	rc "lilly/client/relay"
-	"lilly/internal/cache"
 	"lilly/internal/config"
 	"lilly/internal/protocol"
 	"lilly/internal/util"
@@ -50,7 +49,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		4. redis 조회시 나오는 ip로 relay 요청
 		5. 그래도 보내지 못한 유저에게 push 요청
 	*/
-	userInfos, err := cache.GetUserLocations(resp.JoinedUsers)
+	userInfos, err := wv.redisClient.GetUserLocations(resp.JoinedUsers)
 	if err != nil {
 		slog.Error("GetUserInfo err", "error", err)
 	}
@@ -90,7 +89,7 @@ func (wv *webSocketServer) handleCreateMessage(payload json.RawMessage) {
 		if errors.Is(relayError, rc.ErrNotReady) || errors.Is(relayError, context.DeadlineExceeded) {
 			slog.Error("Failed to connect relay server", "error", relayError)
 			for _, userID := range relayMsg.JoinedUsers {
-				cacheError := cache.DeleteUserLocation(userID)
+				cacheError := wv.redisClient.DeleteUserLocation(userID)
 				notFoundUsers = append(notFoundUsers, userID)
 				if cacheError != nil {
 					slog.Error("GetUserInfo err", "error", cacheError)

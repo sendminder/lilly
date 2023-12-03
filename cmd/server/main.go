@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 
 	"github.com/spf13/viper"
@@ -29,13 +30,13 @@ func main() {
 	slog.Info("server terminated")
 }
 
-func run(_ context.Context) error {
+func run(ctx context.Context) error {
 	config.Init()
-	go cache.CreateRedisConnection()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	broadcaster := broadcast.NewBroadcaster()
+
 	relayServer := rs.NewRelayServer(broadcaster)
 	if relayServer == nil {
 		return errFailedToStartServer
@@ -50,7 +51,11 @@ func run(_ context.Context) error {
 	if messageClient == nil {
 		return errFailedToStartServer
 	}
-	webSocketServer := ws.NewWebSocketServer(broadcaster, relayClient, messageClient)
+	redisClient := cache.NewRedisClient(ctx, config.GetString("redis.host")+":"+strconv.Itoa(config.GetInt("redis.port")))
+	if redisClient == nil {
+		return errFailedToStartServer
+	}
+	webSocketServer := ws.NewWebSocketServer(broadcaster, relayClient, messageClient, redisClient)
 	if webSocketServer == nil {
 		return errFailedToStartServer
 	}
